@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1284" height="2778" viewBox="0 0 1284 2778">
+  <!-- Background: manga paper white -->
+  <rect width="1284" height="2778" fill="#F7F5F0"/>
+
+  <!-- Centered logo block (visually centered on the screen) -->
+  <g transform="translate(642, 1300)">
+    <!-- Top accent line -->
+    <rect x="-300" y="-220" width="600" height="16" fill="#1A1A1A"/>
+
+    <!-- HUDDLE wordmark -->
+    <text
+      x="0"
+      y="0"
+      font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+      font-size="200"
+      font-weight="900"
+      fill="#1A1A1A"
+      text-anchor="middle"
+      letter-spacing="8"
+      dominant-baseline="middle"
+    >HUDDLE</text>
+
+    <!-- Orange underline -->
+    <rect x="-260" y="120" width="520" height="20" fill="#F56A00"/>
+
+    <!-- Tagline -->
+    <text
+      x="0"
+      y="220"
+      font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+      font-size="36"
+      font-weight="700"
+      fill="#1A1A1A"
+      text-anchor="middle"
+      letter-spacing="14"
+    >FIND YOUR GAME</text>
+  </g>
+
+  <!-- Manga-style corner accents -->
+  <rect x="80" y="80" width="120" height="8" fill="#1A1A1A"/>
+  <rect x="80" y="80" width="8" height="120" fill="#1A1A1A"/>
+
+  <rect x="1084" y="80" width="120" height="8" fill="#1A1A1A"/>
+  <rect x="1196" y="80" width="8" height="120" fill="#1A1A1A"/>
+
+  <rect x="80" y="2690" width="120" height="8" fill="#1A1A1A"/>
+  <rect x="80" y="2578" width="8" height="120" fill="#1A1A1A"/>
+
+  <rect x="1084" y="2690" width="120" height="8" fill="#1A1A1A"/>
+  <rect x="1196" y="2578" width="8" height="120" fill="#1A1A1A"/>
+</svg>

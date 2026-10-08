@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Background: Haikyū orange -->
+  <rect width="512" height="512" fill="#F56A00"/>
+
+  <!-- Volleyball glyph, centered, using ink black -->
+  <g transform="translate(256, 256)">
+    <!-- Ball outline -->
+    <circle cx="0" cy="0" r="180" fill="none" stroke="#1A1A1A" stroke-width="24"/>
+
+    <!-- Three panel curves (matches SportIcon.tsx seams) -->
+    <!-- Left vertical-ish curve -->
+    <path
+      d="M 0 -180 C -70 -110, -70 110, 0 180"
+      fill="none"
+      stroke="#1A1A1A"
+      stroke-width="24"
+      stroke-linecap="round"
+    />
+
+    <!-- Upper-right diagonal -->
+    <path
+      d="M -154 -94 C -52 -60, 130 -20, 170 55"
+      fill="none"
+      stroke="#1A1A1A"
+      stroke-width="24"
+      stroke-linecap="round"
+    />
+
+    <!-- Lower-right diagonal -->
+    <path
+      d="M -160 72 C -70 30, 90 -40, 162 -68"
+      fill="none"
+      stroke="#1A1A1A"
+      stroke-width="24"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>
