@@ -519,23 +519,60 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     zIndex: 10,
   },
-  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoIcon: { fontSize: 24 },
-  logoText: { ...typography.sporty, fontSize: 18, letterSpacing: 3, color: colors.ink },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoIcon: {
+    fontSize: 24,
+    marginRight: spacing.sm,
+  },
+  logoText: {
+    ...typography.sporty,
+    fontSize: 18,
+    letterSpacing: 3,
+    color: colors.ink,
+  },
   skipButton: { padding: spacing.sm },
-  skipText: { ...typography.caption, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1 },
+  skipText: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    letterSpacing: 1,
+  },
 
-  progressContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.md, zIndex: 10 },
-  progressBar: { height: 3, backgroundColor: colors.border, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: colors.primary },
+  progressContainer: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
+    zIndex: 10,
+  },
+  progressBar: {
+    height: 3,
+    backgroundColor: colors.border,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+  },
   progressText: {
-    ...typography.caption, fontWeight: '700', color: colors.textMuted,
-    letterSpacing: 1, marginTop: spacing.xs, textAlign: 'center',
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1,
+    marginTop: spacing.xs,
+    textAlign: 'center',
   },
 
   carousel: { flex: 1 },
-  slide: { justifyContent: 'center', paddingHorizontal: spacing.xl },
-  contentWrapper: { flex: 1, justifyContent: 'center' },
+  slide: {
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  contentWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+  },
 
   mainCard: {
     padding: spacing.xxxl,
@@ -545,105 +582,225 @@ const styles = StyleSheet.create({
     ...shadows.panel,
   },
   eyebrow: {
-    ...typography.caption, color: colors.primary, fontWeight: '800',
-    letterSpacing: 2, marginBottom: spacing.xs,
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: spacing.xs,
   },
   title: {
-    ...typography.heading, fontSize: 32, lineHeight: 36,
-    color: colors.ink, marginBottom: spacing.xs,
+    ...typography.heading,
+    fontSize: 32,
+    lineHeight: 36,
+    color: colors.ink,
+    marginBottom: spacing.xs,
   },
-  subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
+  subtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.xl,
+  },
   contentArea: { marginBottom: spacing.xl },
 
-  // Intro
-  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginVertical: spacing.md },
-  featureItem: {
-    flex: 1, minWidth: '45%', backgroundColor: colors.background,
-    padding: spacing.md, borderWidth: 2, borderColor: colors.border, alignItems: 'center',
+  // ---- Intro ----
+  featureGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginVertical: spacing.md,
   },
-  featureIcon: { fontSize: 28, marginBottom: spacing.xs },
-  featureText: { ...typography.bodySmall, fontWeight: '600', color: colors.text },
+  featureItem: {
+    width: '48%',
+    backgroundColor: colors.background,
+    padding: spacing.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  featureIcon: {
+    fontSize: 28,
+    marginBottom: spacing.xs,
+  },
+  featureText: {
+    ...typography.bodySmall,
+    fontWeight: '600',
+    color: colors.text,
+  },
 
-  // Sports + Skill
-  sportsList: { gap: spacing.md },
-  sportBlock: { gap: spacing.sm },
+  // ---- Sports + Skill ----
+  sportsList: {
+    // no gap — spacing handled on children
+  },
+  sportBlock: {
+    marginBottom: spacing.md,
+  },
   sportCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
     padding: spacing.md,
     backgroundColor: colors.background,
     borderWidth: 2,
     borderColor: colors.border,
   },
-  sportCardSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
-  sportEmoji: { fontSize: 24 },
-  sportName: { flex: 1, ...typography.body, fontWeight: '700', color: colors.textSecondary },
-  sportNameSelected: { color: colors.ink },
-  skillRow: { flexDirection: 'row', gap: spacing.sm, paddingLeft: spacing.xl },
+  sportCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
+  sportEmoji: {
+    fontSize: 24,
+    marginRight: spacing.md,
+  },
+  sportName: {
+    flex: 1,
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  sportNameSelected: {
+    color: colors.ink,
+  },
+  skillRow: {
+    flexDirection: 'row',
+    paddingLeft: spacing.xl,
+    paddingTop: spacing.sm,
+  },
   skillPill: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderWidth: 2,
     borderColor: colors.border,
     backgroundColor: colors.background,
+    marginRight: spacing.sm,
   },
-  skillPillActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-  skillPillText: { ...typography.caption, fontWeight: '700', color: colors.textSecondary },
-  skillPillTextActive: { color: colors.textLight },
+  skillPillActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  skillPillText: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  skillPillTextActive: {
+    color: colors.textLight,
+  },
 
-  // Rank
-  rankList: { gap: spacing.sm },
+  // ---- Rank ----
+  rankList: {
+    // no gap
+  },
   rankRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
     padding: spacing.md,
     borderWidth: 2,
     borderColor: colors.border,
     backgroundColor: colors.background,
+    marginBottom: spacing.sm,
   },
-  rankRowActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+  rankRowActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
   rankBadge: {
-    width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: colors.border, backgroundColor: colors.background,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    marginRight: spacing.md,
   },
-  rankBadgeActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-  rankLetter: { ...typography.heading, fontSize: 20, color: colors.ink },
-  rankLetterActive: { color: colors.textLight },
+  rankBadgeActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  rankLetter: {
+    ...typography.heading,
+    fontSize: 20,
+    color: colors.ink,
+  },
+  rankLetterActive: {
+    color: colors.textLight,
+  },
   rankTextWrap: { flex: 1 },
-  rankTitle: { ...typography.subtitle, fontSize: 14, color: colors.textSecondary },
-  rankTitleActive: { color: colors.ink },
-  rankDesc: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  rankTitle: {
+    ...typography.subtitle,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  rankTitleActive: {
+    color: colors.ink,
+  },
+  rankDesc: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
 
-  // Location (only the container — everything else lives in LocationPicker)
+  // ---- Location ----
   locationContainer: {
     width: '100%',
     paddingVertical: spacing.md,
   },
 
-  // Done
-  doneBlock: { alignItems: 'center', paddingVertical: spacing.lg, gap: spacing.sm },
-  doneEmoji: { fontSize: 48 },
-  doneText: { ...typography.subtitle, color: colors.ink, marginTop: spacing.sm },
-  doneSub: { ...typography.caption, color: colors.textSecondary },
-
-  // Error
-  saveError: {
-    ...typography.caption, color: colors.error, fontWeight: '700',
-    marginBottom: spacing.sm, textAlign: 'center',
+  // ---- Done ----
+  doneBlock: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
+  doneEmoji: {
+    fontSize: 48,
+    marginBottom: spacing.sm,
+  },
+  doneText: {
+    ...typography.subtitle,
+    color: colors.ink,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  doneSub: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 
-  continueButton: { width: '100%', borderRadius: 0, marginTop: spacing.sm },
+  // ---- Error ----
+  saveError: {
+    ...typography.caption,
+    color: colors.error,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+
+  continueButton: {
+    width: '100%',
+    borderRadius: 0,
+    marginTop: spacing.sm,
+  },
 
   footer: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.md, paddingHorizontal: spacing.xl,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20, paddingTop: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    paddingTop: spacing.md,
   },
-  footerLine: { flex: 1, height: 1, backgroundColor: colors.border, maxWidth: 60 },
+  footerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+    maxWidth: 60,
+    marginHorizontal: spacing.md,
+  },
   footerText: {
-    ...typography.sporty, fontSize: 10, color: colors.textMuted,
-    letterSpacing: 1.5, textAlign: 'center',
+    ...typography.sporty,
+    fontSize: 10,
+    color: colors.textMuted,
+    letterSpacing: 1.5,
+    textAlign: 'center',
   },
 });
