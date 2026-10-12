@@ -199,12 +199,18 @@ export default function LoadingScreen() {
     }, 4500);
   };
 
-  const handleSkip = () => {
-    if (canSkip && !isNavigating) {
-      setIsNavigating(true);
-      showBrandReveal();
-    }
-  };
+  const handleSkip = async () => {
+  if (!canSkip || isNavigating) return;
+
+  setIsNavigating(true);
+
+  const { data } = await supabase.auth.getSession();
+  if (data.session) {
+    navigation.navigate('Main' as never);
+  } else {
+    navigation.navigate('Auth' as never);
+  }
+};
 
   const handleVideoError = () => {
     // Fallback if video fails
