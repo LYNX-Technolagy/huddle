@@ -29,6 +29,7 @@ import {
   cancelGame,
   transferHost,
   GameDetail,
+  REDACTED_LOCATION,
 } from '../lib/games';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
@@ -169,6 +170,12 @@ export default function GameDetailScreen() {
   const isOpen = game?.status === 'open';
   const isTerminal = game?.status === 'cancelled' || game?.status === 'completed';
 
+  // ----- Private game redaction -----
+  const isPrivate = game?.visibility === 'private';
+  const canSeeDetails = isHost || isApproved;
+  const showRedactedLocation = isPrivate && !canSeeDetails;
+  const showPrivateParticipantNotice = isPrivate && !canSeeDetails;
+
   // Other approved participants (for transfer host)
   const otherApproved = approved.filter((p) => p.user_id !== user?.id);
   const canTransfer = isHost && isOpen && otherApproved.length > 0;
@@ -303,7 +310,7 @@ export default function GameDetailScreen() {
           <View style={styles.headerButton} />
         </View>
         <View style={styles.stateBlock}>
-          <Text style={styles.stateEmoji}>⚠️</Text>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.ink} />
           <Text style={styles.stateText}>{error?.toUpperCase() ?? 'GAME NOT FOUND'}</Text>
           <TouchableOpacity onPress={fetchGame} style={styles.stateButton}>
             <Text style={styles.stateButtonText}>TRY AGAIN</Text>
@@ -341,8 +348,18 @@ export default function GameDetailScreen() {
             <View style={styles.heroIcon}>
               <SportIcon sport={game.sport_id} size={48} color={colors.ink} />
             </View>
-            <View style={[styles.statusBadge, isTerminal && styles.statusBadgeTerminal]}>
-              <Text style={styles.statusBadgeText}>{STATUS_LABEL[game.status as GameStatus]}</Text>
+            <View style={styles.badgeStack}>
+              {isPrivate ? (
+                <View style={styles.privateBadge}>
+                  <Ionicons name="lock-closed" size={10} color={colors.ink} />
+                  <Text style={styles.privateBadgeText}>PRIVATE</Text>
+                </View>
+              ) : null}
+              <View style={[styles.statusBadge, isTerminal && styles.statusBadgeTerminal]}>
+                <Text style={styles.statusBadgeText}>
+                  {STATUS_LABEL[game.status as GameStatus]}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -361,9 +378,20 @@ export default function GameDetailScreen() {
           </View>
 
           <View style={styles.infoBlock}>
-            <Ionicons name="location-outline" size={20} color={colors.ink} />
+            <Ionicons
+              name={showRedactedLocation ? 'lock-closed-outline' : 'location-outline'}
+              size={20}
+              color={showRedactedLocation ? colors.textMuted : colors.ink}
+            />
             <Text style={styles.infoLabel}>WHERE</Text>
-            <Text style={styles.infoValue}>{game.location_name}</Text>
+            <Text
+              style={[
+                styles.infoValue,
+                showRedactedLocation && styles.infoValueRedacted,
+              ]}
+            >
+              {showRedactedLocation ? REDACTED_LOCATION : game.location_name}
+            </Text>
           </View>
 
           <View style={styles.infoBlock}>
@@ -382,6 +410,17 @@ export default function GameDetailScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Private game notice */}
+        {showPrivateParticipantNotice ? (
+          <Card mangaStyle style={styles.privateNotice}>
+            <Ionicons name="lock-closed-outline" size={24} color={colors.ink} />
+            <Text style={styles.privateNoticeTitle}>PRIVATE GAME</Text>
+            <Text style={styles.privateNoticeBody}>
+              Location and player list are hidden until the host approves you.
+            </Text>
+          </Card>
+        ) : null}
 
         {/* Host */}
         {game.host ? (
@@ -440,31 +479,33 @@ export default function GameDetailScreen() {
           </View>
         ) : null}
 
-        {/* Approved players */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            PLAYERS ({approved.length}/{game.max_players})
-          </Text>
-          {approved.map((p) => (
-            <Card key={p.id} mangaStyle style={styles.participantCard}>
-              <View style={styles.participantRow}>
-                <View style={styles.avatarSmall}>
-                  <Text style={styles.avatarTextSmall}>
-                    {initials(p.profile?.username ?? '??')}
-                  </Text>
+        {/* Approved players — hidden for non-participants of private games */}
+        {!showPrivateParticipantNotice ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              PLAYERS ({approved.length}/{game.max_players})
+            </Text>
+            {approved.map((p) => (
+              <Card key={p.id} mangaStyle style={styles.participantCard}>
+                <View style={styles.participantRow}>
+                  <View style={styles.avatarSmall}>
+                    <Text style={styles.avatarTextSmall}>
+                      {initials(p.profile?.username ?? '??')}
+                    </Text>
+                  </View>
+                  <View style={styles.participantInfo}>
+                    <Text style={styles.participantName} numberOfLines={1}>
+                      {p.profile?.username.toUpperCase() ?? 'UNKNOWN'}
+                    </Text>
+                    {p.user_id === game.host_id ? (
+                      <Text style={styles.participantTag}>HOST</Text>
+                    ) : null}
+                  </View>
                 </View>
-                <View style={styles.participantInfo}>
-                  <Text style={styles.participantName} numberOfLines={1}>
-                    {p.profile?.username.toUpperCase() ?? 'UNKNOWN'}
-                  </Text>
-                  {p.user_id === game.host_id ? (
-                    <Text style={styles.participantTag}>HOST</Text>
-                  ) : null}
-                </View>
-              </View>
-            </Card>
-          ))}
-        </View>
+              </Card>
+            ))}
+          </View>
+        ) : null}
 
         <View style={{ height: 180 }} />
       </ScrollView>
@@ -541,7 +582,7 @@ export default function GameDetailScreen() {
             loading={actionLoading}
             style={styles.footerButton}
           >
-            JOIN GAME
+            {isPrivate ? 'REQUEST TO JOIN' : 'JOIN GAME'}
           </Button>
         ) : (
           <View style={styles.footerMessage}>
@@ -663,6 +704,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.background,
   },
+  badgeStack: {
+    alignItems: 'flex-end',
+    gap: spacing.xs,
+  },
   statusBadge: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
@@ -677,6 +722,23 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: colors.textLight,
     letterSpacing: 1.5,
+  },
+  privateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderWidth: 2,
+    borderColor: colors.ink,
+    backgroundColor: colors.background,
+  },
+  privateBadgeText: {
+    ...typography.caption,
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.ink,
+    letterSpacing: 0.5,
   },
   title: {
     ...typography.heading,
@@ -719,6 +781,33 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.ink,
     fontSize: 13,
+  },
+  infoValueRedacted: {
+    fontStyle: 'italic',
+    color: colors.textMuted,
+    fontWeight: '600',
+    fontSize: 11,
+  },
+
+  // Private notice
+  privateNotice: {
+    padding: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary + '10',
+  },
+  privateNoticeTitle: {
+    ...typography.sporty,
+    fontSize: 12,
+    color: colors.ink,
+    letterSpacing: 1.5,
+  },
+  privateNoticeBody: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
   },
 
   // Sections
@@ -844,7 +933,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
   },
-  stateEmoji: { fontSize: 48 },
   stateText: {
     ...typography.sporty,
     fontSize: 14,
@@ -896,7 +984,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Host actions row (Transfer + Cancel)
+  // Host actions
   hostActionsRow: {
     flexDirection: 'row',
     gap: spacing.sm,

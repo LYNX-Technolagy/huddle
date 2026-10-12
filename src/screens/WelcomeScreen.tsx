@@ -5,11 +5,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Animated,
   Dimensions,
   ScrollView,
   Platform,
-  Easing,
   ImageBackground,
   StatusBar,
 } from 'react-native';
@@ -127,20 +125,8 @@ export default function WelcomeScreen() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const scrollViewRef = useRef<ScrollView>(null);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
 
   const step = STEPS[currentStep];
-
-  // Animate content on step change
-  useEffect(() => {
-    fadeAnim.setValue(0);
-    slideAnim.setValue(20);
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-    ]).start();
-  }, [currentStep]);
 
   // -------------------------------------------------------------------------
   // Sports handlers
@@ -177,7 +163,7 @@ export default function WelcomeScreen() {
           selectedSports.every((id) => !!sportSkills[id])
         );
       case 'rank':
-        return true; // pre-selected
+        return true;
       case 'location':
         return location !== null;
       case 'done':
@@ -202,9 +188,6 @@ export default function WelcomeScreen() {
   };
 
   const handleSkip = () => {
-    // Flip the context flag → RootNavigator swaps to Main.
-    // Note: onboarded_at is NOT set in the DB, so next launch
-    // will send them back to onboarding.
     markOnboarded();
   };
 
@@ -219,28 +202,24 @@ export default function WelcomeScreen() {
     try {
       if (!location) throw new Error('Location required');
 
-      // 1. Save sports + per-sport skill
       const sportInputs = selectedSports.map((sportId, idx) => ({
         sport_id: sportId,
         skill_level: sportSkills[sportId] ?? 'casual',
-        is_primary: idx === 0, // first selected = primary
+        is_primary: idx === 0,
       }));
       const { error: sportsErr } = await setMySports(sportInputs);
       if (sportsErr) throw sportsErr;
 
-      // 2. Save rank + location
-      const { error: profileErr } = await updateProfile({
+      const { profileErr } = await updateProfile({
         rank,
         location: { lat: location.lat, lng: location.lng },
         city: location.city ?? undefined,
       });
       if (profileErr) throw profileErr;
 
-      // 3. Mark onboarding complete in DB
       const { error: onboardErr } = await completeOnboarding();
       if (onboardErr) throw onboardErr;
 
-      // 4. Flip the context flag → RootNavigator swaps to Main.
       markOnboarded();
     } catch (e: any) {
       setSaveError(e?.message ?? 'Something went wrong. Please try again.');
@@ -254,13 +233,6 @@ export default function WelcomeScreen() {
   // -------------------------------------------------------------------------
 
   const getProgress = () => ((currentStep + 1) / STEPS.length) * 100;
-
-  //-- Temp. debug --//
-  useEffect(() => {
-    console.log('Current User', user);
-    console.log('User ID', user?.id);
-    console.log('Session exists', !!user);
-  });
 
   // -------------------------------------------------------------------------
   // Render
@@ -308,12 +280,12 @@ export default function WelcomeScreen() {
       >
         {STEPS.map((s, index) => (
           <View key={s.id} style={[styles.slide, { width }]}>
-            <Animated.View
+            <View
               style={[
                 styles.contentWrapper,
                 {
-                  opacity: index === currentStep ? fadeAnim : 0,
-                  transform: [{ translateY: index === currentStep ? slideAnim : 20 }],
+                  // Safari-safe: direct opacity, no animation
+                  opacity: index === currentStep ? 1 : 0,
                 },
               ]}
             >
@@ -371,7 +343,12 @@ export default function WelcomeScreen() {
                                 {sport.name}
                               </Text>
                               {isSelected && (
-                                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                                <Ionicons
+                                  name="checkmark-circle"
+                                  size={20}
+                                  color={colors.primary}
+                                  style={{ marginLeft: spacing.md }}
+                                />
                               )}
                             </TouchableOpacity>
 
@@ -465,7 +442,6 @@ export default function WelcomeScreen() {
 
                 {saveError && <Text style={styles.saveError}>{saveError}</Text>}
 
-                {/* Continue / Finish button */}
                 <Button
                   variant={isStepComplete() ? 'primary' : 'outline'}
                   size="large"
@@ -478,7 +454,7 @@ export default function WelcomeScreen() {
                   {step.id === 'done' ? "LET'S GO" : 'CONTINUE'}
                 </Button>
               </Card>
-            </Animated.View>
+            </View>
           </View>
         ))}
       </ScrollView>
@@ -523,56 +499,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  logoIcon: {
-    fontSize: 24,
-    marginRight: spacing.sm,
-  },
-  logoText: {
-    ...typography.sporty,
-    fontSize: 18,
-    letterSpacing: 3,
-    color: colors.ink,
-  },
+  logoIcon: { fontSize: 24, marginRight: spacing.sm },
+  logoText: { ...typography.sporty, fontSize: 18, letterSpacing: 3, color: colors.ink },
   skipButton: { padding: spacing.sm },
-  skipText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 1,
-  },
+  skipText: { ...typography.caption, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1 },
 
-  progressContainer: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.md,
-    zIndex: 10,
-  },
-  progressBar: {
-    height: 3,
-    backgroundColor: colors.border,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-  },
+  progressContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.md, zIndex: 10 },
+  progressBar: { height: 3, backgroundColor: colors.border, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.primary },
   progressText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 1,
-    marginTop: spacing.xs,
-    textAlign: 'center',
+    ...typography.caption, fontWeight: '700', color: colors.textMuted,
+    letterSpacing: 1, marginTop: spacing.xs, textAlign: 'center',
   },
 
   carousel: { flex: 1 },
-  slide: {
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  contentWrapper: {
-    flex: 1,
-    justifyContent: 'center',
-  },
+  slide: { justifyContent: 'center', paddingHorizontal: spacing.xl },
+  contentWrapper: { flex: 1, justifyContent: 'center' },
 
   mainCard: {
     padding: spacing.xxxl,
@@ -582,27 +524,17 @@ const styles = StyleSheet.create({
     ...shadows.panel,
   },
   eyebrow: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginBottom: spacing.xs,
+    ...typography.caption, color: colors.primary, fontWeight: '800',
+    letterSpacing: 2, marginBottom: spacing.xs,
   },
   title: {
-    ...typography.heading,
-    fontSize: 32,
-    lineHeight: 36,
-    color: colors.ink,
-    marginBottom: spacing.xs,
+    ...typography.heading, fontSize: 32, lineHeight: 36,
+    color: colors.ink, marginBottom: spacing.xs,
   },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.xl,
-  },
+  subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
   contentArea: { marginBottom: spacing.xl },
 
-  // ---- Intro ----
+  // Intro
   featureGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -618,17 +550,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  featureIcon: {
-    fontSize: 28,
-    marginBottom: spacing.xs,
-  },
-  featureText: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-    color: colors.text,
-  },
+  featureIcon: { fontSize: 28, marginBottom: spacing.xs },
+  featureText: { ...typography.bodySmall, fontWeight: '600', color: colors.text },
 
-  // ---- Sports + Skill ----
+  // Sports + Skill
   sportsList: {
     // no gap — spacing handled on children
   },
@@ -643,28 +568,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.border,
   },
-  sportCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
-  },
-  sportEmoji: {
-    fontSize: 24,
-    marginRight: spacing.md,
-  },
-  sportName: {
-    flex: 1,
-    ...typography.body,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  sportNameSelected: {
-    color: colors.ink,
-  },
-  skillRow: {
-    flexDirection: 'row',
-    paddingLeft: spacing.xl,
-    paddingTop: spacing.sm,
-  },
+  sportCardSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+  sportEmoji: { fontSize: 24, marginRight: spacing.md },
+  sportName: { flex: 1, ...typography.body, fontWeight: '700', color: colors.textSecondary },
+  sportNameSelected: { color: colors.ink },
+  skillRow: { flexDirection: 'row', paddingLeft: spacing.xl, paddingTop: spacing.sm },
   skillPill: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
@@ -673,20 +581,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     marginRight: spacing.sm,
   },
-  skillPillActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
-  skillPillText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  skillPillTextActive: {
-    color: colors.textLight,
-  },
+  skillPillActive: { borderColor: colors.primary, backgroundColor: colors.primary },
+  skillPillText: { ...typography.caption, fontWeight: '700', color: colors.textSecondary },
+  skillPillTextActive: { color: colors.textLight },
 
-  // ---- Rank ----
+  // Rank
   rankList: {
     // no gap
   },
@@ -699,95 +598,44 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     marginBottom: spacing.sm,
   },
-  rankRowActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
-  },
+  rankRowActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
   rankBadge: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
+    width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.border, backgroundColor: colors.background,
     marginRight: spacing.md,
   },
-  rankBadgeActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
-  rankLetter: {
-    ...typography.heading,
-    fontSize: 20,
-    color: colors.ink,
-  },
-  rankLetterActive: {
-    color: colors.textLight,
-  },
+  rankBadgeActive: { borderColor: colors.primary, backgroundColor: colors.primary },
+  rankLetter: { ...typography.heading, fontSize: 20, color: colors.ink },
+  rankLetterActive: { color: colors.textLight },
   rankTextWrap: { flex: 1 },
-  rankTitle: {
-    ...typography.subtitle,
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  rankTitleActive: {
-    color: colors.ink,
-  },
-  rankDesc: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
+  rankTitle: { ...typography.subtitle, fontSize: 14, color: colors.textSecondary },
+  rankTitleActive: { color: colors.ink },
+  rankDesc: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 
-  // ---- Location ----
+  // Location
   locationContainer: {
     width: '100%',
     paddingVertical: spacing.md,
   },
 
-  // ---- Done ----
-  doneBlock: {
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-  },
-  doneEmoji: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
-  },
-  doneText: {
-    ...typography.subtitle,
-    color: colors.ink,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  doneSub: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
+  // Done
+  doneBlock: { alignItems: 'center', paddingVertical: spacing.lg },
+  doneEmoji: { fontSize: 48, marginBottom: spacing.sm },
+  doneText: { ...typography.subtitle, color: colors.ink, marginTop: spacing.sm, marginBottom: spacing.xs },
+  doneSub: { ...typography.caption, color: colors.textSecondary },
 
-  // ---- Error ----
+  // Error
   saveError: {
-    ...typography.caption,
-    color: colors.error,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
-    textAlign: 'center',
+    ...typography.caption, color: colors.error, fontWeight: '700',
+    marginBottom: spacing.sm, textAlign: 'center',
   },
 
-  continueButton: {
-    width: '100%',
-    borderRadius: 0,
-    marginTop: spacing.sm,
-  },
+  continueButton: { width: '100%', borderRadius: 0, marginTop: spacing.sm },
 
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: spacing.xl,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-    paddingTop: spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20, paddingTop: spacing.md,
   },
   footerLine: {
     flex: 1,
@@ -797,10 +645,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
   },
   footerText: {
-    ...typography.sporty,
-    fontSize: 10,
-    color: colors.textMuted,
-    letterSpacing: 1.5,
-    textAlign: 'center',
+    ...typography.sporty, fontSize: 10, color: colors.textMuted,
+    letterSpacing: 1.5, textAlign: 'center',
   },
 });

@@ -69,6 +69,8 @@ export async function listGames(params: ListGamesParams = {}): Promise<GameWithH
     query = query.or(`title.ilike.%${q}%,location_name.ilike.%${q}%`);
   }
 
+  query = query.gt('starts_at', new Date().toISOString()); 
+
   // 3. Exclude blocked hosts
   if (blockedIds.size > 0) {
     const blockedArray = Array.from(blockedIds);
@@ -77,7 +79,8 @@ export async function listGames(params: ListGamesParams = {}): Promise<GameWithH
     query = query.not('host_id', 'in', `(${quoted})`);
   }
 
-  query = query.in('status', params.status ? [params.status] : ['open', 'full']);
+  query = query.in('status', params.status ? [params.status] : ['closed', 'open', 'full']);
+  query = query.gt('starts_at', new Date().toISOString()); 
 
   const { data: games, error: gamesErr } = await query;
   if (gamesErr) throw new Error(gamesErr.message);
@@ -301,3 +304,32 @@ export async function cancelGame(
 
   return { error: error ? new Error(error.message) : null };
 }
+
+// -----------------------------------------------------------------------------
+// Private game redaction helper
+// -----------------------------------------------------------------------------
+
+/**
+ * String shown in place of a real location for private games viewed
+ * by someone who isn't the host or an approved participant.
+ */
+export const REDACTED_LOCATION = 'Location shared after approval';
+
+/**
+ * Returns true if the viewer can see private details of a game
+ * (real location, description, participant list).
+ *
+ * - Public games: everyone sees details.
+ * - Private games: only host + approved participants.
+ */
+export function canSeeGameDetails(
+  game: Pick<GameWithHost, 'visibility' | 'host_id'>,
+  currentUserId: string | undefined,
+  isApprovedParticipant: boolean
+): boolean {
+  if (game.visibility === 'public') return true;
+  if (game.host_id === currentUserId) return true;
+  if (isApprovedParticipant) return true;
+  return false;
+}
+

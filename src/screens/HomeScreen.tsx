@@ -19,7 +19,13 @@ import { colors, spacing, typography } from '../design';
 import { Card } from '../components/Card';
 import { SportIcon } from '../components/SportIcon';
 import { Skeleton } from '../components/Skeleton';
-import { listGames, joinGame, GameWithHost } from '../lib/games';
+import {
+  listGames,
+  joinGame,
+  GameWithHost,
+  REDACTED_LOCATION,
+} from '../lib/games';
+import { useAuth } from '../context/AuthContext';
 import { useUnreadCount } from '../hooks/useUnreadCount';
 
 const SPORTS_FILTER = ['ALL', 'VOLLEYBALL', 'BASKETBALL', 'SOCCER', 'TENNIS', 'RUNNING'];
@@ -106,6 +112,7 @@ function HomeSkeletonHero() {
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
+  const { user } = useAuth();
   const unreadCount = useUnreadCount();
 
   const [games, setGames] = useState<GameWithHost[]>([]);
@@ -143,8 +150,6 @@ export default function HomeScreen() {
     [selectedSport]
   );
 
-  // Refetch every time the screen comes into focus
-  // (tab switch, modal dismiss, navigation back)
   useFocusEffect(
     useCallback(() => {
       fetchGames();
@@ -155,7 +160,6 @@ export default function HomeScreen() {
     fetchGames(true);
   }, [fetchGames]);
 
-  // Web keyboard shortcut: R to refresh
   useEffect(() => {
     if (Platform.OS !== 'web') return;
 
@@ -213,10 +217,14 @@ export default function HomeScreen() {
     const isFull = item.current_players >= item.max_players;
     const isJoining = joiningId === item.id;
     const feedback = joinFeedback[item.id];
+    const isPrivate = item.visibility === 'private';
+    const isMyGame = item.host_id === user?.id;
+    const showRedactedLocation = isPrivate && !isMyGame;
 
     let joinLabel = 'JOIN →';
     if (feedback) joinLabel = feedback;
     else if (isFull) joinLabel = 'FULL';
+    else if (isPrivate) joinLabel = 'REQUEST →';
 
     return (
       <Card mangaStyle variant="light" style={styles.gameCard}>
@@ -236,28 +244,50 @@ export default function HomeScreen() {
 
               <View style={styles.gameDetails}>
                 <View style={styles.detailItem}>
-                  <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-                  <Text style={styles.detailText}>{formatGameTime(item.starts_at)}</Text>
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={styles.detailText}>
+                    {formatGameTime(item.starts_at)}
+                  </Text>
                 </View>
                 <View style={styles.detailItem}>
-                  <Ionicons name="people-outline" size={14} color={colors.textSecondary} />
+                  <Ionicons
+                    name="people-outline"
+                    size={14}
+                    color={colors.textSecondary}
+                  />
                   <Text style={styles.detailText}>
                     {item.current_players}/{item.max_players}
                   </Text>
                 </View>
                 <View style={styles.detailItem}>
-                  <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                  <Ionicons
+                    name={showRedactedLocation ? 'lock-closed-outline' : 'location-outline'}
+                    size={14}
+                    color={colors.textSecondary}
+                  />
                   <Text style={styles.detailText} numberOfLines={1}>
-                    {item.location_name}
+                    {showRedactedLocation ? REDACTED_LOCATION : item.location_name}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.gameCardFooter}>
-                <View style={styles.levelTag}>
-                  <Text style={styles.levelTagText}>
-                    {LEVEL_LABEL[item.skill_level] ?? item.skill_level.toUpperCase()}
-                  </Text>
+                <View style={styles.tagsRow}>
+                  <View style={styles.levelTag}>
+                    <Text style={styles.levelTagText}>
+                      {LEVEL_LABEL[item.skill_level] ?? item.skill_level.toUpperCase()}
+                    </Text>
+                  </View>
+                  {isPrivate ? (
+                    <View style={styles.privateTag}>
+                      <Ionicons name="lock-closed" size={10} color={colors.ink} />
+                      <Text style={styles.privateTagText}>PRIVATE</Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 <TouchableOpacity
@@ -359,7 +389,6 @@ export default function HomeScreen() {
       </View>
 
       {loading && !refreshing ? (
-        // Skeleton state
         <>
           <HomeSkeletonHero />
           <View style={styles.filterContainer}>
@@ -383,7 +412,6 @@ export default function HomeScreen() {
         </>
       ) : (
         <>
-          {/* Manga hero */}
           <View style={styles.mangaHero}>
             <View style={styles.mangaTitleContainer}>
               <View style={styles.mangaTitleLine} />
@@ -408,7 +436,6 @@ export default function HomeScreen() {
             <Text style={styles.mangaTagline}>"DON'T JUST WATCH. PLAY."</Text>
           </View>
 
-          {/* Sport filter */}
           <View style={styles.filterContainer}>
             <ScrollView
               horizontal
@@ -437,7 +464,6 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
 
-          {/* Body */}
           {error ? (
             renderErrorState()
           ) : games.length === 0 ? (
@@ -510,7 +536,6 @@ const styles = StyleSheet.create({
   },
   iconButton: { padding: spacing.xs },
 
-  // Notification badge
   badge: {
     position: 'absolute',
     top: 0,
@@ -632,6 +657,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: spacing.xs,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+  },
+  privateTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderWidth: 2,
+    borderColor: colors.ink,
+    backgroundColor: colors.background,
+  },
+  privateTagText: {
+    ...typography.caption,
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.ink,
+    letterSpacing: 0.5,
   },
   levelTag: {
     paddingHorizontal: spacing.md,
