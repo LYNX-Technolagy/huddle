@@ -81,23 +81,23 @@ const STEPS: Step[] = [
 const SPORTS: { id: string; emoji: string; name: string }[] = [
   { id: 'volleyball', emoji: '🏐', name: 'Volleyball' },
   { id: 'basketball', emoji: '🏀', name: 'Basketball' },
-  { id: 'soccer',     emoji: '⚽', name: 'Soccer' },
-  { id: 'tennis',     emoji: '🎾', name: 'Tennis' },
-  { id: 'running',    emoji: '🏃', name: 'Running' },
-  { id: 'other',      emoji: '🎯', name: 'Other' },
+  { id: 'soccer', emoji: '⚽', name: 'Soccer' },
+  { id: 'tennis', emoji: '🎾', name: 'Tennis' },
+  { id: 'running', emoji: '🏃', name: 'Running' },
+  { id: 'other', emoji: '🎯', name: 'Other' },
 ];
 
 const SKILL_LEVELS: { id: SkillLevel; label: string }[] = [
-  { id: 'casual',      label: 'Casual' },
-  { id: 'regular',     label: 'Regular' },
+  { id: 'casual', label: 'Casual' },
+  { id: 'regular', label: 'Regular' },
   { id: 'competitive', label: 'Competitive' },
 ];
 
 const RANK_OPTIONS: { id: Rank; title: string; description: string }[] = [
-  { id: 'S', title: 'TOP PLAYER',  description: 'Always competing, high intensity' },
+  { id: 'S', title: 'TOP PLAYER', description: 'Always competing, high intensity' },
   { id: 'A', title: 'EXPERIENCED', description: 'Play hard, know the game' },
-  { id: 'B', title: 'SOLID',       description: 'Regular player, reliable' },
-  { id: 'C', title: 'CASUAL',      description: 'Here for fun and fitness' },
+  { id: 'B', title: 'SOLID', description: 'Regular player, reliable' },
+  { id: 'C', title: 'CASUAL', description: 'Here for fun and fitness' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -210,7 +210,7 @@ export default function WelcomeScreen() {
       const { error: sportsErr } = await setMySports(sportInputs);
       if (sportsErr) throw sportsErr;
 
-      const { profileErr } = await updateProfile({
+      const { error: profileErr } = await updateProfile({
         rank,
         location: { lat: location.lat, lng: location.lng },
         city: location.city ?? undefined,
