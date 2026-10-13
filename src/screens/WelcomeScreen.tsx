@@ -10,6 +10,7 @@ import {
   Platform,
   ImageBackground,
   StatusBar,
+  AccessibilityInfo,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -81,23 +82,23 @@ const STEPS: Step[] = [
 const SPORTS: { id: string; emoji: string; name: string }[] = [
   { id: 'volleyball', emoji: '🏐', name: 'Volleyball' },
   { id: 'basketball', emoji: '🏀', name: 'Basketball' },
-  { id: 'soccer', emoji: '⚽', name: 'Soccer' },
-  { id: 'tennis', emoji: '🎾', name: 'Tennis' },
-  { id: 'running', emoji: '🏃', name: 'Running' },
-  { id: 'other', emoji: '🎯', name: 'Other' },
+  { id: 'soccer',     emoji: '⚽', name: 'Soccer' },
+  { id: 'tennis',     emoji: '🎾', name: 'Tennis' },
+  { id: 'running',    emoji: '🏃', name: 'Running' },
+  { id: 'other',      emoji: '🎯', name: 'Other' },
 ];
 
 const SKILL_LEVELS: { id: SkillLevel; label: string }[] = [
-  { id: 'casual', label: 'Casual' },
-  { id: 'regular', label: 'Regular' },
+  { id: 'casual',      label: 'Casual' },
+  { id: 'regular',     label: 'Regular' },
   { id: 'competitive', label: 'Competitive' },
 ];
 
 const RANK_OPTIONS: { id: Rank; title: string; description: string }[] = [
-  { id: 'S', title: 'TOP PLAYER', description: 'Always competing, high intensity' },
+  { id: 'S', title: 'TOP PLAYER',  description: 'Always competing, high intensity' },
   { id: 'A', title: 'EXPERIENCED', description: 'Play hard, know the game' },
-  { id: 'B', title: 'SOLID', description: 'Regular player, reliable' },
-  { id: 'C', title: 'CASUAL', description: 'Here for fun and fitness' },
+  { id: 'B', title: 'SOLID',       description: 'Regular player, reliable' },
+  { id: 'C', title: 'CASUAL',      description: 'Here for fun and fitness' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -124,16 +125,28 @@ export default function WelcomeScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Reduced motion (iOS accessibility)
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  // Refs
   const scrollViewRef = useRef<ScrollView>(null);
+  const slideScrollRefs = useRef<Record<string, ScrollView | null>>({});
 
   const step = STEPS[currentStep];
+
+  // Check reduced motion preference on mount
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+  }, []);
 
   // -------------------------------------------------------------------------
   // Sports handlers
   // -------------------------------------------------------------------------
 
   const toggleSport = (sportId: string) => {
-    if (selectedSports.includes(sportId)) {
+    const isCurrentlySelected = selectedSports.includes(sportId);
+
+    if (isCurrentlySelected) {
       setSelectedSports((prev) => prev.filter((id) => id !== sportId));
       setSportSkills((prev) => {
         const next = { ...prev };
@@ -142,6 +155,14 @@ export default function WelcomeScreen() {
       });
     } else {
       setSelectedSports((prev) => [...prev, sportId]);
+
+      // Auto-scroll down so the skill pills (which just appeared) are visible.
+      // Small delay to let React render the newly-added pills first.
+      setTimeout(() => {
+        slideScrollRefs.current['sports']?.scrollToEnd({
+          animated: !reduceMotion,
+        });
+      }, 150);
     }
   };
 
@@ -182,6 +203,17 @@ export default function WelcomeScreen() {
       const next = currentStep + 1;
       setCurrentStep(next);
       scrollViewRef.current?.scrollTo({ x: next * width, animated: true });
+
+      // Reset the vertical scroll position of the *target* slide.
+      // Otherwise coming back to a previously-visited step leaves it
+      // scrolled down mid-card.
+      setTimeout(() => {
+        const targetStepId = STEPS[next].id;
+        slideScrollRefs.current[targetStepId]?.scrollTo({
+          y: 0,
+          animated: false,
+        });
+      }, 300);
     } else {
       handleFinish();
     }
@@ -269,7 +301,7 @@ export default function WelcomeScreen() {
         </Text>
       </View>
 
-      {/* Content */}
+      {/* Carousel — horizontal, one slide per step */}
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -284,176 +316,186 @@ export default function WelcomeScreen() {
               style={[
                 styles.contentWrapper,
                 {
-                  // Safari-safe: direct opacity, no animation
                   opacity: index === currentStep ? 1 : 0,
                 },
               ]}
+              pointerEvents={index === currentStep ? 'auto' : 'none'}
             >
-              <Card mangaStyle style={styles.mainCard}>
-                <Text style={styles.eyebrow}>{s.eyebrow}</Text>
-                <Text style={styles.title}>{s.title}</Text>
-                <Text style={styles.subtitle}>{s.subtitle}</Text>
+              {/* Vertical scroll for each step's card */}
+              <ScrollView
+                ref={(ref) => {
+                  slideScrollRefs.current[s.id] = ref;
+                }}
+                contentContainerStyle={styles.cardScrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Card mangaStyle style={styles.mainCard}>
+                  <Text style={styles.eyebrow}>{s.eyebrow}</Text>
+                  <Text style={styles.title}>{s.title}</Text>
+                  <Text style={styles.subtitle}>{s.subtitle}</Text>
 
-                <View style={styles.contentArea}>
-                  {/* INTRO */}
-                  {s.id === 'intro' && (
-                    <View style={styles.featureGrid}>
-                      <View style={styles.featureItem}>
-                        <Text style={styles.featureIcon}>🏐</Text>
-                        <Text style={styles.featureText}>Find Games</Text>
+                  <View style={styles.contentArea}>
+                    {/* INTRO */}
+                    {s.id === 'intro' && (
+                      <View style={styles.featureGrid}>
+                        <View style={styles.featureItem}>
+                          <Text style={styles.featureIcon}>🏐</Text>
+                          <Text style={styles.featureText}>Find Games</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Text style={styles.featureIcon}>🤝</Text>
+                          <Text style={styles.featureText}>Meet Players</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Text style={styles.featureIcon}>🎯</Text>
+                          <Text style={styles.featureText}>Skill Match</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Text style={styles.featureIcon}>📍</Text>
+                          <Text style={styles.featureText}>Local Games</Text>
+                        </View>
                       </View>
-                      <View style={styles.featureItem}>
-                        <Text style={styles.featureIcon}>🤝</Text>
-                        <Text style={styles.featureText}>Meet Players</Text>
-                      </View>
-                      <View style={styles.featureItem}>
-                        <Text style={styles.featureIcon}>🎯</Text>
-                        <Text style={styles.featureText}>Skill Match</Text>
-                      </View>
-                      <View style={styles.featureItem}>
-                        <Text style={styles.featureIcon}>📍</Text>
-                        <Text style={styles.featureText}>Local Games</Text>
-                      </View>
-                    </View>
-                  )}
+                    )}
 
-                  {/* SPORTS + SKILL */}
-                  {s.id === 'sports' && (
-                    <View style={styles.sportsList}>
-                      {SPORTS.map((sport) => {
-                        const isSelected = selectedSports.includes(sport.id);
-                        const skill = sportSkills[sport.id];
-                        return (
-                          <View key={sport.id} style={styles.sportBlock}>
+                    {/* SPORTS + SKILL */}
+                    {s.id === 'sports' && (
+                      <View style={styles.sportsList}>
+                        {SPORTS.map((sport) => {
+                          const isSelected = selectedSports.includes(sport.id);
+                          const skill = sportSkills[sport.id];
+                          return (
+                            <View key={sport.id} style={styles.sportBlock}>
+                              <TouchableOpacity
+                                style={[
+                                  styles.sportCard,
+                                  isSelected && styles.sportCardSelected,
+                                ]}
+                                onPress={() => toggleSport(sport.id)}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={styles.sportEmoji}>{sport.emoji}</Text>
+                                <Text
+                                  style={[
+                                    styles.sportName,
+                                    isSelected && styles.sportNameSelected,
+                                  ]}
+                                >
+                                  {sport.name}
+                                </Text>
+                                {isSelected && (
+                                  <Ionicons
+                                    name="checkmark-circle"
+                                    size={20}
+                                    color={colors.primary}
+                                    style={{ marginLeft: spacing.md }}
+                                  />
+                                )}
+                              </TouchableOpacity>
+
+                              {isSelected && (
+                                <View style={styles.skillRow}>
+                                  {SKILL_LEVELS.map((level) => {
+                                    const isActive = skill === level.id;
+                                    return (
+                                      <TouchableOpacity
+                                        key={level.id}
+                                        style={[
+                                          styles.skillPill,
+                                          isActive && styles.skillPillActive,
+                                        ]}
+                                        onPress={() => setSportSkill(sport.id, level.id)}
+                                        activeOpacity={0.7}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.skillPillText,
+                                            isActive && styles.skillPillTextActive,
+                                          ]}
+                                        >
+                                          {level.label}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </View>
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    )}
+
+                    {/* RANK */}
+                    {s.id === 'rank' && (
+                      <View style={styles.rankList}>
+                        {RANK_OPTIONS.map((option) => {
+                          const isActive = rank === option.id;
+                          return (
                             <TouchableOpacity
-                              style={[
-                                styles.sportCard,
-                                isSelected && styles.sportCardSelected,
-                              ]}
-                              onPress={() => toggleSport(sport.id)}
+                              key={option.id}
+                              style={[styles.rankRow, isActive && styles.rankRowActive]}
+                              onPress={() => setRank(option.id)}
                               activeOpacity={0.7}
                             >
-                              <Text style={styles.sportEmoji}>{sport.emoji}</Text>
-                              <Text
-                                style={[
-                                  styles.sportName,
-                                  isSelected && styles.sportNameSelected,
-                                ]}
-                              >
-                                {sport.name}
-                              </Text>
-                              {isSelected && (
-                                <Ionicons
-                                  name="checkmark-circle"
-                                  size={20}
-                                  color={colors.primary}
-                                  style={{ marginLeft: spacing.md }}
-                                />
-                              )}
-                            </TouchableOpacity>
-
-                            {isSelected && (
-                              <View style={styles.skillRow}>
-                                {SKILL_LEVELS.map((level) => {
-                                  const isActive = skill === level.id;
-                                  return (
-                                    <TouchableOpacity
-                                      key={level.id}
-                                      style={[
-                                        styles.skillPill,
-                                        isActive && styles.skillPillActive,
-                                      ]}
-                                      onPress={() => setSportSkill(sport.id, level.id)}
-                                      activeOpacity={0.7}
-                                    >
-                                      <Text
-                                        style={[
-                                          styles.skillPillText,
-                                          isActive && styles.skillPillTextActive,
-                                        ]}
-                                      >
-                                        {level.label}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  );
-                                })}
+                              <View style={[styles.rankBadge, isActive && styles.rankBadgeActive]}>
+                                <Text style={[styles.rankLetter, isActive && styles.rankLetterActive]}>
+                                  {option.id}
+                                </Text>
                               </View>
-                            )}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
+                              <View style={styles.rankTextWrap}>
+                                <Text style={[styles.rankTitle, isActive && styles.rankTitleActive]}>
+                                  {option.title}
+                                </Text>
+                                <Text style={styles.rankDesc}>{option.description}</Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
 
-                  {/* RANK */}
-                  {s.id === 'rank' && (
-                    <View style={styles.rankList}>
-                      {RANK_OPTIONS.map((option) => {
-                        const isActive = rank === option.id;
-                        return (
-                          <TouchableOpacity
-                            key={option.id}
-                            style={[styles.rankRow, isActive && styles.rankRowActive]}
-                            onPress={() => setRank(option.id)}
-                            activeOpacity={0.7}
-                          >
-                            <View style={[styles.rankBadge, isActive && styles.rankBadgeActive]}>
-                              <Text style={[styles.rankLetter, isActive && styles.rankLetterActive]}>
-                                {option.id}
-                              </Text>
-                            </View>
-                            <View style={styles.rankTextWrap}>
-                              <Text style={[styles.rankTitle, isActive && styles.rankTitleActive]}>
-                                {option.title}
-                              </Text>
-                              <Text style={styles.rankDesc}>{option.description}</Text>
-                            </View>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  )}
+                    {/* LOCATION */}
+                    {s.id === 'location' && (
+                      <View style={styles.locationContainer}>
+                        <LocationPicker
+                          value={location}
+                          onChange={setLocation}
+                          initialMode="gps"
+                          primaryLabel="ENABLE LOCATION"
+                        />
+                      </View>
+                    )}
 
-                  {/* LOCATION */}
-                  {s.id === 'location' && (
-                    <View style={styles.locationContainer}>
-                      <LocationPicker
-                        value={location}
-                        onChange={setLocation}
-                        initialMode="gps"
-                        primaryLabel="ENABLE LOCATION"
-                      />
-                    </View>
-                  )}
+                    {/* DONE */}
+                    {s.id === 'done' && (
+                      <View style={styles.doneBlock}>
+                        <Text style={styles.doneEmoji}>🔥</Text>
+                        <Text style={styles.doneText}>
+                          {selectedSports.length} {selectedSports.length === 1 ? 'sport' : 'sports'} · Rank {rank}
+                        </Text>
+                        {location?.city && (
+                          <Text style={styles.doneSub}>📍 {location.city}</Text>
+                        )}
+                      </View>
+                    )}
+                  </View>
 
-                  {/* DONE */}
-                  {s.id === 'done' && (
-                    <View style={styles.doneBlock}>
-                      <Text style={styles.doneEmoji}>🔥</Text>
-                      <Text style={styles.doneText}>
-                        {selectedSports.length} {selectedSports.length === 1 ? 'sport' : 'sports'} · Rank {rank}
-                      </Text>
-                      {location?.city && (
-                        <Text style={styles.doneSub}>📍 {location.city}</Text>
-                      )}
-                    </View>
-                  )}
-                </View>
+                  {saveError && <Text style={styles.saveError}>{saveError}</Text>}
 
-                {saveError && <Text style={styles.saveError}>{saveError}</Text>}
-
-                <Button
-                  variant={isStepComplete() ? 'primary' : 'outline'}
-                  size="large"
-                  pill={false}
-                  onPress={handleNext}
-                  disabled={!isStepComplete() || saving}
-                  loading={step.id === 'done' ? saving : false}
-                  style={styles.continueButton}
-                >
-                  {step.id === 'done' ? "LET'S GO" : 'CONTINUE'}
-                </Button>
-              </Card>
+                  <Button
+                    variant={isStepComplete() ? 'primary' : 'outline'}
+                    size="large"
+                    pill={false}
+                    onPress={handleNext}
+                    disabled={!isStepComplete() || saving}
+                    loading={step.id === 'done' ? saving : false}
+                    style={styles.continueButton}
+                  >
+                    {step.id === 'done' ? "LET'S GO" : 'CONTINUE'}
+                  </Button>
+                </Card>
+              </ScrollView>
             </View>
           </View>
         ))}
@@ -474,6 +516,10 @@ export default function WelcomeScreen() {
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
@@ -512,10 +558,23 @@ const styles = StyleSheet.create({
     letterSpacing: 1, marginTop: spacing.xs, textAlign: 'center',
   },
 
+  // Carousel + slides
   carousel: { flex: 1 },
-  slide: { justifyContent: 'center', paddingHorizontal: spacing.xl },
-  contentWrapper: { flex: 1, justifyContent: 'center' },
+  slide: {
+    flex: 1,
+    paddingHorizontal: spacing.xl,
+  },
+  contentWrapper: {
+    flex: 1,
+  },
+  cardScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    paddingBottom: 80,
+  },
 
+  // Card
   mainCard: {
     padding: spacing.xxxl,
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
@@ -555,7 +614,7 @@ const styles = StyleSheet.create({
 
   // Sports + Skill
   sportsList: {
-    // no gap — spacing handled on children
+    // spacing handled on children (no gap — Safari-safe)
   },
   sportBlock: {
     marginBottom: spacing.md,
@@ -568,11 +627,26 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.border,
   },
-  sportCardSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
-  sportEmoji: { fontSize: 24, marginRight: spacing.md },
-  sportName: { flex: 1, ...typography.body, fontWeight: '700', color: colors.textSecondary },
+  sportCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
+  sportEmoji: {
+    fontSize: 24,
+    marginRight: spacing.md,
+  },
+  sportName: {
+    flex: 1,
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
   sportNameSelected: { color: colors.ink },
-  skillRow: { flexDirection: 'row', paddingLeft: spacing.xl, paddingTop: spacing.sm },
+  skillRow: {
+    flexDirection: 'row',
+    paddingLeft: spacing.xl,
+    paddingTop: spacing.sm,
+  },
   skillPill: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
@@ -581,8 +655,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     marginRight: spacing.sm,
   },
-  skillPillActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-  skillPillText: { ...typography.caption, fontWeight: '700', color: colors.textSecondary },
+  skillPillActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  skillPillText: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
   skillPillTextActive: { color: colors.textLight },
 
   // Rank
@@ -598,7 +679,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     marginBottom: spacing.sm,
   },
-  rankRowActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+  rankRowActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
   rankBadge: {
     width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: colors.border, backgroundColor: colors.background,
@@ -621,7 +705,12 @@ const styles = StyleSheet.create({
   // Done
   doneBlock: { alignItems: 'center', paddingVertical: spacing.lg },
   doneEmoji: { fontSize: 48, marginBottom: spacing.sm },
-  doneText: { ...typography.subtitle, color: colors.ink, marginTop: spacing.sm, marginBottom: spacing.xs },
+  doneText: {
+    ...typography.subtitle,
+    color: colors.ink,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
   doneSub: { ...typography.caption, color: colors.textSecondary },
 
   // Error
@@ -630,8 +719,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm, textAlign: 'center',
   },
 
-  continueButton: { width: '100%', borderRadius: 0, marginTop: spacing.sm },
+  continueButton: {
+    width: '100%',
+    borderRadius: 0,
+    marginTop: spacing.sm,
+  },
 
+  // Footer
   footer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: spacing.xl,
