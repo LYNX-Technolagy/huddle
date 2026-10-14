@@ -3,28 +3,92 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, Platform, View } from 'react-native';
+import * as Sentry from '@sentry/react-native';
+import { isRunningInExpoGo } from 'expo';
+
 import RootNavigator from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/context/AuthContext';
-import * as Sentry from '@sentry/react-native';
+import { PWAInstallBanner } from './src/components/PWAInstallBanner';
+import { initInstallPrompt } from './src/lib/pwaInstall';
+
+// -----------------------------------------------------------------------------
+// Sentry — initialize before any rendering
+// -----------------------------------------------------------------------------
+
+const navigationIntegration = Sentry.reactNavigationIntegration({
+  enableTimeToInitialDisplay: !isRunningInExpoGo(),
+});
 
 Sentry.init({
-  dsn: 'https://e8d3a5a693419af5fc4f9bfbf6227a6b@o4512183920623616.ingest.de.sentry.io/4512183930978384',
-
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  environment: __DEV__ ? 'development' : 'beta',
   sendDefaultPii: true,
-
-  // Enable Logs
+  tracesSampleRate: 0.1,
   enableLogs: true,
-
-  // Configure Session Replay
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+  integrations: [
+    navigationIntegration,
+    Sentry.mobileReplayIntegration(),
+    Sentry.feedbackIntegration(),
+  ],
+  enableNativeFramesTracking: !isRunningInExpoGo(),
 
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
+  beforeSend(event) {
+    const SCRUB_KEYS = [
+      'email',
+      'password',
+      'token',
+      'location',
+      'lat',
+      'lng',
+      'city',
+      'full_name',
+      'bio',
+    ];
+
+    // Scrub event.extra
+    if (event.extra) {
+      for (const key of SCRUB_KEYS) delete event.extra[key];
+    }
+
+    // Scrub contexts
+    if (event.contexts) {
+      for (const ctxKey of Object.keys(event.contexts)) {
+        const ctx = event.contexts[ctxKey];
+        if (ctx && typeof ctx === 'object') {
+          for (const key of SCRUB_KEYS) {
+            delete (ctx as Record<string, unknown>)[key];
+          }
+        }
+      }
+    }
+
+    // Scrub breadcrumb data
+    if (event.breadcrumbs?.values) {
+      const crumbs = Array.from(event.breadcrumbs.values());
+      for (const crumb of crumbs) {
+        if (crumb.data) {
+          for (const key of SCRUB_KEYS) delete crumb.data[key];
+        }
+      }
+    }
+
+    return event;
+  },
 });
+
+// -----------------------------------------------------------------------------
+// PWA install prompt capture (web only)
+// -----------------------------------------------------------------------------
+
+if (Platform.OS === 'web') {
+  initInstallPrompt();
+}
+
+// -----------------------------------------------------------------------------
+// App component
+// -----------------------------------------------------------------------------
 
 export default Sentry.wrap(function App() {
   const GestureProvider = ({ children }: { children: React.ReactNode }) => {
@@ -43,6 +107,7 @@ export default Sentry.wrap(function App() {
       <GestureProvider>
         <AuthProvider>
           <RootNavigator />
+          <PWAInstallBanner />
         </AuthProvider>
       </GestureProvider>
     </SafeAreaProvider>
