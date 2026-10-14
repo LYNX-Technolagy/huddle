@@ -26,7 +26,6 @@ const { height, width } = Dimensions.get('window');
 // Manga-style background (black and white)
 const BACKGROUND_IMAGE = require('../assets/images/background_2.jpg');
 
-
 export default function LoginScreen() {
   const { signIn } = useAuth();
   const navigation = useNavigation();
@@ -57,11 +56,10 @@ export default function LoginScreen() {
     if (loginError) {
       setErrors({ password: loginError.message });
       return;
-    } else {
-      // No manual navigation -- Root navigator picks up the new session
-      // and routes to Onboaring or Main depending on onboarded_at.
     }
-  }
+    // No manual navigation — RootNavigator picks up the new session
+    // and routes to Onboarding or Main depending on onboarded_at.
+  };
 
   const handleSignupPress = () => {
     navigation.navigate('Signup' as never);
@@ -69,7 +67,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (imageError) {
-      console.warn('⚠️ Manga background image failed to load.');
+      console.warn('Manga background image failed to load.');
     }
   }, [imageError]);
 
@@ -83,9 +81,8 @@ export default function LoginScreen() {
         style={styles.backgroundImage}
         resizeMode="cover"
         onError={() => setImageError(true)}
-        onLoad={() => console.log('✅ Manga background loaded')}
+        onLoad={() => console.log('Manga background loaded')}
       >
-        {/* Ink overlay for readability */}
         <View style={styles.inkOverlay} />
       </ImageBackground>
 
@@ -110,7 +107,6 @@ export default function LoginScreen() {
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
-
             {/* Main Card - Manga Panel Style */}
             <Card
               variant="light"
@@ -187,18 +183,22 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Quick Login - Ink style buttons */}
+              {/* Quick Login — disabled until OAuth is implemented */}
               <View style={styles.quickLoginContainer}>
-                <TouchableOpacity style={styles.quickLoginButton} onPress={handleLogin}>
-                  <Ionicons name="logo-google" size={20} color={colors.ink} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickLoginButton} onPress={handleLogin}>
-                  <Ionicons name="logo-apple" size={22} color={colors.ink} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickLoginButton} onPress={handleLogin}>
-                  <Ionicons name="logo-facebook" size={20} color={colors.ink} />
-                </TouchableOpacity>
+                <View style={[styles.quickLoginButton, styles.quickLoginButtonDisabled]}>
+                  <Ionicons name="logo-google" size={20} color={colors.textMuted} />
+                </View>
+                <View style={[styles.quickLoginButton, styles.quickLoginButtonDisabled]}>
+                  <Ionicons name="logo-apple" size={22} color={colors.textMuted} />
+                </View>
+                <View style={[styles.quickLoginButton, styles.quickLoginButtonDisabled]}>
+                  <Ionicons name="logo-facebook" size={20} color={colors.textMuted} />
+                </View>
               </View>
+
+              <Text style={styles.quickLoginNote}>
+                SOCIAL SIGN-IN COMING SOON
+              </Text>
 
               {/* Sign Up Link - Nike style */}
               <View style={styles.footer}>
@@ -254,7 +254,12 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacing.xl,
-    paddingTop: Platform.OS === 'ios' ? 60 : StatusBar.currentHeight ? StatusBar.currentHeight + 20 : 20,
+    paddingTop:
+      Platform.OS === 'ios'
+        ? 60
+        : StatusBar.currentHeight
+        ? StatusBar.currentHeight + 20
+        : 20,
     paddingBottom: spacing.md,
   },
   logoContainer: {
@@ -356,18 +361,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.md,
     width: '100%',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.sm,
   },
   quickLoginButton: {
     width: 48,
     height: 48,
     borderRadius: 0, // Square - manga style
-    backgroundColor: colors.background,
+    backgroundColor: colors.inkLight,
     borderWidth: 2,
     borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.panel,
+  },
+  quickLoginButtonDisabled: {
+    opacity: 0.4,
+    backgroundColor: colors.background,
+  },
+  quickLoginNote: {
+    ...typography.caption,
+    fontSize: 10,
+    color: colors.textMuted,
+    letterSpacing: 1.5,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
   },
   footer: {
     alignItems: 'center',
