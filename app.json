@@ -13,7 +13,7 @@
       "output": "single",
       "name": "Huddle",
       "shortName": "Huddle",
-      "themeColor": "#F56A00",
+      "themeColor": "#000000",
       "backgroundColor": "#F7F5F0",
       "display": "standalone",
       "orientation": "portrait",
