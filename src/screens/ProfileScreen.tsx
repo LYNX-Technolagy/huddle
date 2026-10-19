@@ -27,6 +27,7 @@ import {
 } from '../lib/profile';
 import { getMyGames, GameWithHost } from '../lib/games';
 import type { ProfileRow } from '../types';
+import { OnboardingPrompts } from '../components/OnboardingPrompts';
 
 // -----------------------------------------------------------------------------
 // Cross-platform alert helpers
@@ -241,13 +242,13 @@ export default function ProfileScreen() {
   };
 
   const handlePrivacy = () => {
-   navigation.navigate('Privacy')
+    navigation.navigate('Privacy')
   };
 
   const handleSignOut = () => {
     showConfirm('Log out?', 'You can log back in anytime.', () => {
       signOut();
-      
+
     });
   };
 
@@ -301,6 +302,11 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>PROFILE</Text>
           <Text style={styles.headerSubtitle}>YOUR STATS</Text>
+        </View>
+
+        {/* Onboarding prompts */}
+        <View style={styles.promptsContainer}>
+          <OnboardingPrompts show={['sports', 'location']} />
         </View>
 
         <Card mangaStyle style={styles.profileCard}>
@@ -520,7 +526,10 @@ const styles = StyleSheet.create({
     color: colors.primary,
     letterSpacing: 2,
   },
-
+  promptsContainer: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+  },
   profileCard: {
     margin: spacing.xl,
     padding: spacing.xl,

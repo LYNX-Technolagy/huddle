@@ -22,6 +22,7 @@ import {
 } from '../components/LocationPicker';
 import { getMyProfile, updateProfile } from '../lib/profile';
 import type { RootStackParamList } from '../navigation/types';
+import { useAuth } from '../context/AuthContext';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Location'>;
 
@@ -32,6 +33,7 @@ export default function LocationScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const { refreshProfileState } = useAuth();
 
   const [value, setValue] = useState<LocationValue | null>(null);
   const [initialCity, setInitialCity] = useState<string | null>(null);
@@ -80,6 +82,7 @@ export default function LocationScreen() {
       return;
     }
 
+    await refreshProfileState();
     navigation.goBack();
   };
 

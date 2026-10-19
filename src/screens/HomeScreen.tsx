@@ -27,6 +27,7 @@ import {
 } from '../lib/games';
 import { useAuth } from '../context/AuthContext';
 import { useUnreadCount } from '../hooks/useUnreadCount';
+import { OnboardingPrompts } from '../components/OnboardingPrompts';
 
 const SPORTS_FILTER = ['ALL', 'VOLLEYBALL', 'BASKETBALL', 'SOCCER', 'TENNIS', 'RUNNING'];
 
@@ -387,6 +388,12 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      {/* ↑ This closing </View> was missing in your file */}
+
+      {/* Onboarding prompts — shown until profile is complete */}
+      <View style={styles.promptsContainer}>
+        <OnboardingPrompts show={['sports', 'location']} />
+      </View>
 
       {loading && !refreshing ? (
         <>
@@ -555,6 +562,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  promptsContainer: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
   },
 
   mangaHero: {

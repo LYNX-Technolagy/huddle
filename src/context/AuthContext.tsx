@@ -9,69 +9,103 @@ import React, {
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import * as authLib from '../lib/auth';
+import { consumeSessionFromUrl } from '../lib/session';
+
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
+export interface ProfileState {
+  hasSports: boolean;
+  hasLocation: boolean;
+  hasRank: boolean;
+  /** True when all profile fields needed for a good experience are set */
+  isComplete: boolean;
+}
 
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
-  /** null = still checking, true = onboarded, false = needs onboarding */
-  onboarded: boolean | null;
+  /** null while still loading, then the derived profile state */
+  profileState: ProfileState | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (params: authLib.SignUpParams) => Promise<{ error: Error | null }>;
   resendVerification: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  /** Call after onboarding completes to flip the flag without a full reload */
-  markOnboarded: () => void;
+  /** Call after profile edits to refresh the completion state */
+  refreshProfileState: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+// -----------------------------------------------------------------------------
+// Provider
+// -----------------------------------------------------------------------------
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  const [profileState, setProfileState] = useState<ProfileState | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ---- Fetch the onboarded flag for a given user ----
-  const fetchOnboarded = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('onboarded_at')
-      .eq('id', userId)
-      .single();
+  // ---- Fetch profile state ----
+  const fetchProfileState = useCallback(async (userId: string) => {
+    const [profileRes, sportsRes] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('rank, location, city')
+        .eq('id', userId)
+        .single(),
+      supabase
+        .from('user_sports')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+    ]);
 
-    if (error || !data) {
-      // Profile row should exist (trigger creates it on signup).
-      // If it doesn't yet, treat as not onboarded.
-      setOnboarded(false);
-      return;
-    }
-    setOnboarded(!!data.onboarded_at);
+    const hasRank = !!profileRes.data?.rank;
+    const hasLocation =
+      !!profileRes.data?.location || !!profileRes.data?.city;
+    const hasSports = (sportsRes.count ?? 0) > 0;
+
+    setProfileState({
+      hasSports,
+      hasLocation,
+      hasRank,
+      isComplete: hasSports && hasLocation && hasRank,
+    });
   }, []);
 
+  // ---- Initial session ----
   useEffect(() => {
     let mounted = true;
 
-    // 1. Initial session
-    supabase.auth.getSession().then(({ data }) => {
+    (async () => {
+      // IMPORTANT: before we ask Supabase for the session, check whether the
+      // user landed here from an email verification link. If they did, that
+      // link contains tokens in the URL fragment which we need to consume
+      // before getSession() is called — otherwise the app treats them as
+      // logged out and asks them to log in again.
+      await consumeSessionFromUrl();
+
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
+
       const s = data.session;
       setSession(s);
       setUser(s?.user ?? null);
 
       if (s?.user) {
-        fetchOnboarded(s.user.id).finally(() => {
-          if (mounted) setLoading(false);
-        });
+        await fetchProfileState(s.user.id);
       } else {
-        setOnboarded(false);
-        setLoading(false);
+        setProfileState(null);
       }
-    });
 
-    // 2. Auth state changes
+      if (mounted) setLoading(false);
+    })();
+
     const unsubscribe = authLib.onAuthChange(async (newSession) => {
       if (!mounted) return;
 
@@ -82,14 +116,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(newSession?.user ?? null);
 
       if (!newSession?.user) {
-        setOnboarded(false);
+        setProfileState(null);
         return;
       }
 
-      // Only re-fetch if the user actually changed (avoids
-      // a network call on every token refresh).
-      if (prevUserId !== nextUserId || onboarded === null) {
-        await fetchOnboarded(newSession.user.id);
+      if (prevUserId !== nextUserId || profileState === null) {
+        await fetchProfileState(newSession.user.id);
       }
     });
 
@@ -100,6 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ---- Exposed actions ----
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await authLib.signIn({ email, password });
     return { error };
@@ -116,25 +149,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const signOut = useCallback(async () => {
     await authLib.signOut();
-    setOnboarded(false);
+    setProfileState(null);
   }, []);
 
-  const markOnboarded = useCallback(() => {
-    setOnboarded(true);
-  }, []);
+  const refreshProfileState = useCallback(async () => {
+    if (!user) return;
+    await fetchProfileState(user.id);
+  }, [user, fetchProfileState]);
 
   return (
     <AuthContext.Provider
       value={{
         session,
         user,
-        onboarded,
+        profileState,
         loading,
         signIn,
         signUp,
         resendVerification,
         signOut,
-        markOnboarded,
+        refreshProfileState,
       }}
     >
       {children}

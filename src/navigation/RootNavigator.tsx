@@ -10,7 +10,6 @@ import { useAuth } from '../context/AuthContext';
 
 import LoadingScreen from '../screens/LoadingScreen';
 import AuthNavigator from './AuthNavigator';
-import OnboardingNavigator from './OnboardingNavigator';
 import MainApp from './MainApp';
 
 import CreateGameScreen from '../screens/CreateGameScreen';
@@ -21,16 +20,16 @@ import LocationScreen from '../screens/LocationScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import DownloadDataScreen from '../screens/DownloadDataScreen';
 import DeleteAccountScreen from '../screens/DeleteAccountScreen';
-import { StackScreen } from 'react-native-screens';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import EditSportsScreen from '../screens/EditSportsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-  const { session, onboarded, loading } = useAuth();
+  const { session, loading } = useAuth();
 
-  // Still checking initial session OR still fetching onboarded flag
-  if (loading || (session && onboarded === null)) {
+  // While checking initial session, show a spinner (bootstrap)
+  if (loading) {
     return (
       <View style={styles.bootstrap}>
         <ActivityIndicator color={colors.primary} size="large" />
@@ -39,7 +38,6 @@ export default function RootNavigator() {
   }
 
   const isAuthed = !!session;
-  const needsOnboarding = isAuthed && onboarded === false;
 
   return (
     <NavigationContainer>
@@ -51,25 +49,19 @@ export default function RootNavigator() {
         }}
       >
         {!isAuthed ? (
-          // ---------- 1. Logged out ----------
+          // ---- Logged out ----
           <>
             <Stack.Screen name="Loading" component={LoadingScreen} />
             <Stack.Screen name="Auth" component={AuthNavigator} />
           </>
-        ) : needsOnboarding ? (
-          // ---------- 2. Logged in, not onboarded ----------
-          <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
         ) : (
-          // ---------- 3. Fully ready ----------
+          // ---- Logged in (no onboarding gate anymore) ----
           <>
             <Stack.Screen name="Main" component={MainApp} />
             <Stack.Screen
               name="CreateGame"
               component={CreateGameScreen}
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-              }}
+              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
             />
             <Stack.Screen
               name="GameDetail"
@@ -84,6 +76,11 @@ export default function RootNavigator() {
             <Stack.Screen
               name="EditProfile"
               component={EditProfileScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="EditSports"
+              component={EditSportsScreen}
               options={{ animation: 'slide_from_right' }}
             />
             <Stack.Screen
@@ -104,13 +101,13 @@ export default function RootNavigator() {
             <Stack.Screen
               name="DeleteAccount"
               component={DeleteAccountScreen}
-              options={{ animation: 'slide_from_right'}}
-              />
+              options={{ animation: 'slide_from_right' }}
+            />
             <Stack.Screen
               name="Notifications"
               component={NotificationsScreen}
               options={{ animation: 'slide_from_right' }}
-              />
+            />
           </>
         )}
       </Stack.Navigator>
