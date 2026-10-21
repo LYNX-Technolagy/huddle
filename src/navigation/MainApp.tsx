@@ -4,6 +4,8 @@ import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../design';
 import { BottomNav, TabRoute } from '../components/BottomNav';
+import { useAuth } from '../context/AuthContext';
+import { guardGuestAction } from '../lib/guestGuard';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -12,7 +14,8 @@ import PlayersScreen from '../screens/PlayersScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 export default function MainApp() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const { isGuest } = useAuth();
   const [activeTab, setActiveTab] = useState<TabRoute>('Home');
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenTranslateX = useRef(new Animated.Value(0)).current;
@@ -51,10 +54,10 @@ export default function MainApp() {
       }),
     ]).start(() => {
       setActiveTab(tab);
-      
+
       // Reset for new screen
       screenTranslateX.setValue(10);
-      
+
       // Fade in new screen
       Animated.parallel([
         Animated.timing(screenOpacity, {
@@ -74,8 +77,11 @@ export default function MainApp() {
   };
 
   const handleCreatePress = () => {
-    // Navigate to CreateGame modal
-    navigation.navigate('CreateGame' as never);
+    guardGuestAction(isGuest, {
+      action: 'create a game',
+      onAllowed: () => navigation.navigate('CreateGame'),
+      onSignIn: () => navigation.navigate('Auth', { screen: 'Login' }),
+    });
   };
 
   return (

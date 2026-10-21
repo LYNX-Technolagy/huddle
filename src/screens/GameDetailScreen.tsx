@@ -32,6 +32,7 @@ import {
   REDACTED_LOCATION,
 } from '../lib/games';
 import { useAuth } from '../context/AuthContext';
+import { guardGuestAction } from '../lib/guestGuard';
 import type { RootStackParamList } from '../navigation/types';
 import type { GameStatus } from '../types';
 
@@ -129,7 +130,7 @@ export default function GameDetailScreen() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProps>();
   const { gameId } = route.params;
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
 
   const [detail, setDetail] = useState<GameDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -162,10 +163,14 @@ export default function GameDetailScreen() {
   const approved = participants.filter((p) => p.status === 'approved');
   const pending = participants.filter((p) => p.status === 'pending');
 
-  const isHost = game?.host_id === user?.id;
-  const myParticipation = participants.find((p) => p.user_id === user?.id);
+  // Guest mode: they have no participation, no host rights
+  const isHost = !isGuest && game?.host_id === user?.id;
+  const myParticipation = !isGuest
+    ? participants.find((p) => p.user_id === user?.id)
+    : undefined;
   const isApproved = myParticipation?.status === 'approved';
   const isPending = myParticipation?.status === 'pending';
+
   const isFull = (game?.current_players ?? 0) >= (game?.max_players ?? 0);
   const isOpen = game?.status === 'open';
   const isTerminal = game?.status === 'cancelled' || game?.status === 'completed';
@@ -196,6 +201,14 @@ export default function GameDetailScreen() {
       showAlert('Request sent', 'Waiting for the host to approve you.');
     }
     await fetchGame();
+  };
+
+  const handleJoinPress = () => {
+    guardGuestAction(isGuest, {
+      action: 'join this game',
+      onAllowed: handleJoin,
+      onSignIn: () => navigation.navigate('Auth', { screen: 'Login' }),
+    });
   };
 
   const handleLeave = async () => {
@@ -440,7 +453,7 @@ export default function GameDetailScreen() {
           </View>
         ) : null}
 
-        {/* Pending requests (host only) */}
+        {/* Pending requests (host only — never for guests) */}
         {isHost && pending.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
@@ -578,11 +591,17 @@ export default function GameDetailScreen() {
             variant="primary"
             size="large"
             pill={false}
-            onPress={handleJoin}
+            onPress={handleJoinPress}
             loading={actionLoading}
             style={styles.footerButton}
           >
-            {isPrivate ? 'REQUEST TO JOIN' : 'JOIN GAME'}
+            {isGuest
+              ? isPrivate
+                ? 'SIGN IN TO REQUEST'
+                : 'SIGN IN TO JOIN'
+              : isPrivate
+              ? 'REQUEST TO JOIN'
+              : 'JOIN GAME'}
           </Button>
         ) : (
           <View style={styles.footerMessage}>
@@ -591,7 +610,7 @@ export default function GameDetailScreen() {
         )}
       </View>
 
-      {/* Transfer Host modal */}
+      {/* Transfer Host modal — host only, never for guests */}
       <Modal
         visible={transferModalVisible}
         transparent

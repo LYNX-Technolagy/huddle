@@ -74,10 +74,12 @@ export default function VerifyEmailScreen() {
   // Safety net: if a session appears while this screen is mounted,
   // RootNavigator will swap automatically — but we log it for clarity.
   useEffect(() => {
-    if (session) {
-      console.log('✅ Email verified — session created, RootNavigator will swap.');
+    if (session && navigation.canGoBack()) {
+      // Signed in as a result of clicking the email link
+      // If we were opened as a modal (from guest flow), pop back.
+      navigation.goBack();
     }
-  }, [session]);
+  }, [session, navigation]);
 
   const handleResend = async () => {
     if (resending || cooldown > 0) return;

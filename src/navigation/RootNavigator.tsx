@@ -16,19 +16,24 @@ import CreateGameScreen from '../screens/CreateGameScreen';
 import GameDetailScreen from '../screens/GameDetailScreen';
 import PlayerProfileScreen from '../screens/PlayerProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import EditSportsScreen from '../screens/EditSportsScreen';
 import LocationScreen from '../screens/LocationScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import DownloadDataScreen from '../screens/DownloadDataScreen';
 import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
-import EditSportsScreen from '../screens/EditSportsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, isGuest } = useAuth();
 
-  // While checking initial session, show a spinner (bootstrap)
+  console.log(
+    '[ROOT] render | session =', !!session,
+    '| loading =', loading,
+    '| isGuest =', isGuest
+  );
+
   if (loading) {
     return (
       <View style={styles.bootstrap}>
@@ -38,9 +43,21 @@ export default function RootNavigator() {
   }
 
   const isAuthed = !!session;
+  const inApp = isAuthed || isGuest;
+
+  console.log(
+    '[ROOT] isAuthed =', isAuthed,
+    '| inApp =', inApp,
+    '| branch =', !inApp ? 'AUTH' : 'MAIN'
+  );
+
+  // Force the NavigationContainer to remount when the auth branch changes.
+  // Without this, React Navigation can preserve the old branch's screens in
+  // its internal stack — LoginScreen stays mounted after switching to guest.
+  const navKey = !inApp ? 'auth' : 'app';
 
   return (
-    <NavigationContainer>
+    <NavigationContainer key={navKey}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -48,21 +65,38 @@ export default function RootNavigator() {
           contentStyle: { backgroundColor: colors.background },
         }}
       >
-        {!isAuthed ? (
-          // ---- Logged out ----
+        {!inApp ? (
+          // ---- Logged out: Loading → Auth ----
           <>
             <Stack.Screen name="Loading" component={LoadingScreen} />
             <Stack.Screen name="Auth" component={AuthNavigator} />
           </>
         ) : (
-          // ---- Logged in (no onboarding gate anymore) ----
+          // ---- Logged in OR guest: Main + all app screens ----
           <>
             <Stack.Screen name="Main" component={MainApp} />
+
+            {/* Auth is a modal for guests who want to sign in mid-flow */}
+            <Stack.Screen
+              name="Auth"
+              component={AuthNavigator}
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+
+            {/* Modal for creating games */}
             <Stack.Screen
               name="CreateGame"
               component={CreateGameScreen}
-              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
             />
+
+            {/* Standard push screens */}
             <Stack.Screen
               name="GameDetail"
               component={GameDetailScreen}

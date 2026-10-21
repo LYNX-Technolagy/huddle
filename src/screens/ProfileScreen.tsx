@@ -17,6 +17,7 @@ import { colors, spacing, typography } from '../design';
 import { Card } from '../components/Card';
 import { SportIcon } from '../components/SportIcon';
 import { Skeleton } from '../components/Skeleton';
+import { OnboardingPrompts } from '../components/OnboardingPrompts';
 import { useAuth } from '../context/AuthContext';
 import {
   getMyProfile,
@@ -27,7 +28,6 @@ import {
 } from '../lib/profile';
 import { getMyGames, GameWithHost } from '../lib/games';
 import type { ProfileRow } from '../types';
-import { OnboardingPrompts } from '../components/OnboardingPrompts';
 
 // -----------------------------------------------------------------------------
 // Cross-platform alert helpers
@@ -113,7 +113,6 @@ function ProfileSkeleton() {
         <Text style={styles.headerSubtitle}>YOUR STATS</Text>
       </View>
 
-      {/* Profile card skeleton */}
       <Card mangaStyle style={styles.profileCard}>
         <View style={styles.profileContent}>
           <Skeleton width={80} height={80} style={{ borderRadius: 40 }} />
@@ -145,7 +144,6 @@ function ProfileSkeleton() {
         </View>
       </Card>
 
-      {/* Sports section skeleton */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>YOUR SPORTS</Text>
@@ -161,24 +159,111 @@ function ProfileSkeleton() {
           </View>
         </Card>
       </View>
-
-      {/* Games section skeleton */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>YOUR UPCOMING GAMES</Text>
-          <View style={styles.sectionLine} />
-        </View>
-        <Card mangaStyle style={styles.gameCard}>
-          <View style={styles.gameCardContent}>
-            <Skeleton width={26} height={26} />
-            <View style={styles.gameCardRight}>
-              <Skeleton height={14} width="70%" style={{ marginBottom: 6 }} />
-              <Skeleton height={10} width="90%" />
-            </View>
-          </View>
-        </Card>
-      </View>
     </ScrollView>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Guest State View
+// -----------------------------------------------------------------------------
+
+interface GuestViewProps {
+  onSignIn: () => void;
+  onSignUp: () => void;
+}
+
+function GuestView({ onSignIn, onSignUp }: GuestViewProps) {
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>PROFILE</Text>
+        <Text style={styles.headerSubtitle}>GUEST MODE</Text>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.guestContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero */}
+        <View style={styles.guestHero}>
+          <View style={styles.guestIconWrap}>
+            <Ionicons name="person-circle-outline" size={64} color={colors.ink} />
+          </View>
+
+          <Text style={styles.guestEyebrow}>YOU'RE BROWSING AS A GUEST</Text>
+          <Text style={styles.guestTitle}>UNLOCK YOUR{'\n'}HUDDLE</Text>
+          <Text style={styles.guestBody}>
+            Sign in to save games, follow players, and track your stats.
+          </Text>
+        </View>
+
+        {/* Benefits */}
+        <Card mangaStyle style={styles.guestBenefits}>
+          <BenefitRow
+            icon="calendar-outline"
+            text="Join and create games"
+          />
+          <BenefitRow
+            icon="people-outline"
+            text="Follow players and build your network"
+          />
+          <BenefitRow
+            icon="notifications-outline"
+            text="Get notified when you're approved"
+          />
+          <BenefitRow
+            icon="stats-chart-outline"
+            text="Track your games and stats"
+            isLast
+          />
+        </Card>
+
+        {/* CTAs */}
+        <View style={styles.guestActions}>
+          <TouchableOpacity
+            style={styles.guestSignInButton}
+            onPress={onSignIn}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.guestSignInButtonText}>SIGN IN</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.guestSignUpButton}
+            onPress={onSignUp}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.guestSignUpButtonText}>CREATE ACCOUNT</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Manga footer */}
+        <View style={styles.mangaFooter}>
+          <View style={styles.mangaFooterBorder} />
+          <Text style={styles.mangaFooterText}>HUDDLE v1.0</Text>
+          <View style={styles.mangaFooterBorder} />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+interface BenefitRowProps {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  text: string;
+  isLast?: boolean;
+}
+
+function BenefitRow({ icon, text, isLast = false }: BenefitRowProps) {
+  return (
+    <View style={[styles.benefitRow, isLast && styles.benefitRowLast]}>
+      <View style={styles.benefitIcon}>
+        <Ionicons name={icon} size={18} color={colors.primary} />
+      </View>
+      <Text style={styles.benefitText}>{text}</Text>
+    </View>
   );
 }
 
@@ -188,7 +273,7 @@ function ProfileSkeleton() {
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
-  const { signOut } = useAuth();
+  const { signOut, isGuest } = useAuth();
 
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [sports, setSports] = useState<UserSportWithMeta[]>([]);
@@ -198,6 +283,12 @@ export default function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
+    // Guests don't have a profile — skip fetching entirely
+    if (isGuest) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -221,7 +312,7 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isGuest]);
 
   useFocusEffect(
     useCallback(() => {
@@ -229,35 +320,58 @@ export default function ProfileScreen() {
     }, [fetchAll])
   );
 
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+
   const handleEditProfile = () => {
     navigation.navigate('EditProfile');
+  };
+
+  const handleEditSports = () => {
+    navigation.navigate('EditSports');
+  };
+
+  const handleEditLocation = () => {
+    navigation.navigate('Location');
   };
 
   const handleNotifications = () => {
     showAlert('Coming soon', 'Notification settings will be available soon.');
   };
 
-  const handleLocation = () => {
-    navigation.navigate('Location')
-  };
-
   const handlePrivacy = () => {
-    navigation.navigate('Privacy')
+    navigation.navigate('Privacy');
   };
 
   const handleSignOut = () => {
     showConfirm('Log out?', 'You can log back in anytime.', () => {
       signOut();
-
     });
   };
 
   const handleGameTap = (gameId: string) => {
-    navigation?.navigate('GameDetail', { gameId });
+    navigation.navigate('GameDetail', { gameId });
+  };
+
+  const handleSignIn = () => {
+    navigation.navigate('Auth', { screen: 'Login' });
+  };
+
+  const handleSignUp = () => {
+    navigation.navigate('Auth', { screen: 'Signup' });
   };
 
   // ---------------------------------------------------------------------------
-  // Loading — skeleton
+  // Guest branch — render guest view
+  // ---------------------------------------------------------------------------
+
+  if (isGuest) {
+    return <GuestView onSignIn={handleSignIn} onSignUp={handleSignUp} />;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Loading
   // ---------------------------------------------------------------------------
 
   if (loading) {
@@ -269,6 +383,10 @@ export default function ProfileScreen() {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Error
+  // ---------------------------------------------------------------------------
+
   if (error || !profile) {
     return (
       <SafeAreaView style={styles.container}>
@@ -278,7 +396,7 @@ export default function ProfileScreen() {
           <Text style={styles.headerSubtitle}>YOUR STATS</Text>
         </View>
         <View style={styles.stateBlock}>
-          <Text style={styles.stateEmoji}>⚠️</Text>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.ink} />
           <Text style={styles.stateText}>
             {error?.toUpperCase() ?? 'PROFILE NOT FOUND'}
           </Text>
@@ -309,6 +427,7 @@ export default function ProfileScreen() {
           <OnboardingPrompts show={['sports', 'location']} />
         </View>
 
+        {/* Profile card */}
         <Card mangaStyle style={styles.profileCard}>
           <View style={styles.profileContent}>
             <View style={styles.profileAvatar}>
@@ -374,14 +493,33 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
+        {/* Sports */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>YOUR SPORTS</Text>
             <View style={styles.sectionLine} />
+            <TouchableOpacity onPress={handleEditSports} activeOpacity={0.7}>
+              <Text style={styles.sectionAction}>EDIT</Text>
+            </TouchableOpacity>
           </View>
 
           {sports.length === 0 ? (
-            <Text style={styles.emptyText}>No sports set yet.</Text>
+            <TouchableOpacity
+              onPress={handleEditSports}
+              activeOpacity={0.7}
+            >
+              <Card mangaStyle style={styles.emptyCard}>
+                <Ionicons
+                  name="add-circle-outline"
+                  size={28}
+                  color={colors.primary}
+                />
+                <Text style={styles.emptyCardTitle}>ADD YOUR SPORTS</Text>
+                <Text style={styles.emptyCardBody}>
+                  Tell us what you play to see matching games
+                </Text>
+              </Card>
+            </TouchableOpacity>
           ) : (
             sports.map((sport) => (
               <Card key={sport.sport_id} mangaStyle style={styles.sportCard}>
@@ -407,6 +545,7 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* Upcoming games */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>YOUR UPCOMING GAMES</Text>
@@ -446,11 +585,22 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* Settings */}
         <View style={[styles.section, styles.lastSection]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>SETTINGS</Text>
             <View style={styles.sectionLine} />
           </View>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={handleEditLocation}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="location-outline" size={20} color={colors.ink} />
+            <Text style={styles.settingText}>Location</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingItem}
@@ -464,21 +614,11 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             style={styles.settingItem}
-            onPress={handleLocation}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="location-outline" size={20} color={colors.ink} />
-            <Text style={styles.settingText}>Location</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.settingItem}
             onPress={handlePrivacy}
             activeOpacity={0.7}
           >
             <Ionicons name="lock-closed-outline" size={20} color={colors.ink} />
-            <Text style={styles.settingText}>Privacy</Text>
+            <Text style={styles.settingText}>Privacy & Legal</Text>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
@@ -507,6 +647,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
+  // Header
   header: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
@@ -526,6 +667,8 @@ const styles = StyleSheet.create({
     color: colors.primary,
     letterSpacing: 2,
   },
+
+  // Profile card
   promptsContainer: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
@@ -624,6 +767,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
+  // Sections
   section: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
@@ -645,6 +789,13 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: colors.ink,
   },
+  sectionAction: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 1,
+  },
   emptyText: {
     ...typography.bodySmall,
     color: colors.textMuted,
@@ -653,6 +804,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
 
+  // Sports
   sportCard: {
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -692,6 +844,30 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
+  // Empty card (add sports prompt)
+  emptyCard: {
+    padding: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '08',
+  },
+  emptyCardTitle: {
+    ...typography.sporty,
+    fontSize: 12,
+    color: colors.primary,
+    letterSpacing: 1.5,
+    marginTop: spacing.xs,
+  },
+  emptyCardBody: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+
+  // Games
   gameCard: {
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -715,6 +891,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
+  // Settings
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -734,6 +911,7 @@ const styles = StyleSheet.create({
   },
   settingTextLogout: { color: colors.error },
 
+  // States
   stateBlock: {
     flex: 1,
     alignItems: 'center',
@@ -741,7 +919,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
   },
-  stateEmoji: { fontSize: 48 },
   stateText: {
     ...typography.sporty,
     fontSize: 14,
@@ -764,12 +941,133 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
+  // Guest view
+  guestContent: {
+    paddingBottom: spacing.huge,
+  },
+  guestHero: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xxxl,
+    paddingBottom: spacing.xl,
+  },
+  guestIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 3,
+    borderColor: colors.ink,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  guestEyebrow: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 2,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  guestTitle: {
+    ...typography.heading,
+    fontSize: 28,
+    color: colors.ink,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    letterSpacing: 0.5,
+    lineHeight: 32,
+  },
+  guestBody: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 300,
+  },
+
+  guestBenefits: {
+    marginHorizontal: spacing.xl,
+    padding: spacing.md,
+    borderWidth: 2,
+    borderColor: colors.ink,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  benefitRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 0,
+  },
+  benefitIcon: {
+    width: 36,
+    height: 36,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  benefitText: {
+    ...typography.body,
+    fontSize: 14,
+    color: colors.text,
+    flex: 1,
+  },
+
+  guestActions: {
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.xl,
+    gap: spacing.md,
+  },
+  guestSignInButton: {
+    width: '100%',
+    paddingVertical: spacing.md,
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.ink,
+  },
+  guestSignInButtonText: {
+    ...typography.button,
+    fontSize: 13,
+    color: colors.textLight,
+    letterSpacing: 1.5,
+  },
+  guestSignUpButton: {
+    width: '100%',
+    paddingVertical: spacing.md,
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.ink,
+  },
+  guestSignUpButtonText: {
+    ...typography.button,
+    fontSize: 13,
+    color: colors.ink,
+    letterSpacing: 1.5,
+  },
+
+  // Manga footer
   mangaFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xl,
     gap: spacing.md,
+    marginTop: spacing.lg,
   },
   mangaFooterBorder: {
     flex: 1,

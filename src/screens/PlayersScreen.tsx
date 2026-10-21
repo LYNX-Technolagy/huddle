@@ -11,15 +11,18 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../design';
 import { Card } from '../components/Card';
 import { Skeleton } from '../components/Skeleton';
+import { useAuth } from '../context/AuthContext';
 import {
   getSuggestedPlayers,
   followUser,
   unfollowUser,
   getMyFollowingIds,
 } from '../lib/players';
+import { guardGuestAction } from '../lib/guestGuard';
 import type { SuggestedPlayer } from '../types';
 
 const RANK_FILTERS = ['ALL', 'S', 'A', 'B', 'C'] as const;
@@ -73,21 +76,30 @@ function PlayerSkeletonCard() {
 // -----------------------------------------------------------------------------
 
 export default function PlayersScreen() {
+  const navigation = useNavigation<any>();
+  const { isGuest } = useAuth();
+
   const [players, setPlayers] = useState<SuggestedPlayer[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRank, setSelectedRank] = useState<RankFilter>('ALL');
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
-  const navigation = useNavigation<any>();
+
+  // ---------------------------------------------------------------------------
+  // Fetch
+  // ---------------------------------------------------------------------------
+
   const fetchAll = useCallback(async () => {
+    // Guests can still see suggested players — the RPC works without
+    // requiring a session for reads, but getMyFollowingIds needs one
     try {
       setLoading(true);
       setError(null);
 
       const [suggested, followingIds] = await Promise.all([
         getSuggestedPlayers(),
-        getMyFollowingIds(),
+        isGuest ? Promise.resolve(new Set<string>()) : getMyFollowingIds(),
       ]);
 
       setPlayers(suggested);
@@ -97,7 +109,7 @@ export default function PlayersScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isGuest]);
 
   useFocusEffect(
     useCallback(() => {
@@ -105,11 +117,16 @@ export default function PlayersScreen() {
     }, [fetchAll])
   );
 
+  // ---------------------------------------------------------------------------
+  // Follow / Unfollow — guarded for guests
+  // ---------------------------------------------------------------------------
+
   const handleToggleFollow = async (userId: string) => {
     if (pendingIds.has(userId)) return;
 
     const isCurrentlyFollowing = following.has(userId);
 
+    // Optimistic update
     setFollowing((prev) => {
       const next = new Set(prev);
       if (isCurrentlyFollowing) next.delete(userId);
@@ -130,6 +147,7 @@ export default function PlayersScreen() {
     });
 
     if (result.error) {
+      // Rollback on failure
       setFollowing((prev) => {
         const next = new Set(prev);
         if (isCurrentlyFollowing) next.add(userId);
@@ -139,10 +157,26 @@ export default function PlayersScreen() {
     }
   };
 
+  const handleToggleFollowPress = (userId: string) => {
+    guardGuestAction(isGuest, {
+      action: 'follow this player',
+      onAllowed: () => handleToggleFollow(userId),
+      onSignIn: () => navigation.navigate('Auth', { screen: 'Login' }),
+    });
+  };
+
+  // ---------------------------------------------------------------------------
+  // Filter
+  // ---------------------------------------------------------------------------
+
   const filteredPlayers =
     selectedRank === 'ALL'
       ? players
       : players.filter((p) => p.rank_code === selectedRank);
+
+  // ---------------------------------------------------------------------------
+  // Card render
+  // ---------------------------------------------------------------------------
 
   const renderPlayerCard = (player: SuggestedPlayer) => {
     const isFollowing = following.has(player.user_id);
@@ -192,7 +226,7 @@ export default function PlayersScreen() {
               ]}
               onPress={(e) => {
                 e.stopPropagation();
-                handleToggleFollow(player.user_id);
+                handleToggleFollowPress(player.user_id);
               }}
               disabled={isPending}
               activeOpacity={0.7}
@@ -278,7 +312,7 @@ export default function PlayersScreen() {
         {/* Error */}
         {!loading && error ? (
           <View style={styles.stateBlock}>
-            <Text style={styles.stateEmoji}>⚠️</Text>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.ink} />
             <Text style={styles.stateText}>{error.toUpperCase()}</Text>
             <TouchableOpacity onPress={fetchAll} style={styles.stateButton}>
               <Text style={styles.stateButtonText}>TRY AGAIN</Text>
@@ -289,17 +323,30 @@ export default function PlayersScreen() {
         {/* Empty */}
         {!loading && !error && filteredPlayers.length === 0 ? (
           <View style={styles.emptyBlock}>
-            <Text style={styles.emptyEmoji}>🎯</Text>
+            <Ionicons name="people-outline" size={48} color={colors.ink} />
             <Text style={styles.emptyText}>
-              {players.length === 0
-                ? 'NO SUGGESTIONS YET'
-                : `NO ${selectedRank}-RANK PLAYERS`}
+              {isGuest
+                ? 'SIGN IN TO SEE PLAYERS'
+                : players.length === 0
+                  ? 'NO SUGGESTIONS YET'
+                  : `NO ${selectedRank}-RANK PLAYERS`}
             </Text>
             <Text style={styles.emptySub}>
-              {players.length === 0
-                ? 'Play more games to meet people'
-                : 'Try a different rank filter'}
+              {isGuest
+                ? 'Get personalized suggestions based on your sports and location'
+                : players.length === 0
+                  ? 'Play more games to meet people'
+                  : 'Try a different rank filter'}
             </Text>
+            {isGuest ? (
+              <TouchableOpacity
+                style={styles.stateButton}
+                onPress={() => navigation.navigate('Auth', { screen: 'Login' })}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.stateButtonText}>SIGN IN</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         ) : null}
 
@@ -455,7 +502,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.giant,
     gap: spacing.sm,
   },
-  emptyEmoji: { fontSize: 48 },
   emptyText: {
     ...typography.sporty,
     fontSize: 14,
@@ -476,7 +522,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
   },
-  stateEmoji: { fontSize: 48 },
   stateText: {
     ...typography.sporty,
     fontSize: 14,

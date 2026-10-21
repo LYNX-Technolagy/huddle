@@ -36,21 +36,22 @@ export interface ListGamesParams {
  */
 export async function listGames(params: ListGamesParams = {}): Promise<GameWithHost[]> {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
 
-  // 1. Get all users in a block relationship with the current user (either direction)
-  const { data: blockRows } = await supabase
-    .from('blocks')
-    .select('blocker_id, blocked_id')
-    .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
-
+  // Guests (no session) can still browse games. Only the block filter
+  // requires a user ID — skip it for guests.
   const blockedIds = new Set<string>();
-  (blockRows ?? []).forEach((row: { blocker_id: string; blocked_id: string }) => {
-    if (row.blocker_id === user.id) blockedIds.add(row.blocked_id);
-    else blockedIds.add(row.blocker_id);
-  });
+  if (user) {
+    const { data: blockRows } = await supabase
+      .from('blocks')
+      .select('blocker_id, blocked_id')
+      .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
 
-  // 2. Base query
+    (blockRows ?? []).forEach((row: { blocker_id: string; blocked_id: string }) => {
+      if (row.blocker_id === user.id) blockedIds.add(row.blocked_id);
+      else blockedIds.add(row.blocker_id);
+    });
+  }
+
   let query = supabase
     .from('games')
     .select(`
@@ -62,31 +63,28 @@ export async function listGames(params: ListGamesParams = {}): Promise<GameWithH
 
   if (params.sportId) query = query.eq('sport_id', params.sportId);
   if (params.skillLevel) query = query.eq('skill_level', params.skillLevel);
-  if (params.visibility) query = query.eq('visibility', params.visibility);
 
   if (params.searchQuery && params.searchQuery.trim()) {
     const q = params.searchQuery.trim().replace(/[%_]/g, '');
     query = query.or(`title.ilike.%${q}%,location_name.ilike.%${q}%`);
   }
 
-  query = query.gt('starts_at', new Date().toISOString()); 
+  // Only show future games
+  query = query.gt('starts_at', new Date().toISOString());
 
-  // 3. Exclude blocked hosts
-  if (blockedIds.size > 0) {
+  // Exclude blocked hosts — only when we have a user
+  if (user && blockedIds.size > 0) {
     const blockedArray = Array.from(blockedIds);
-    // PostgREST `not.in` needs quoted UUIDs
     const quoted = blockedArray.map((id) => `"${id}"`).join(',');
     query = query.not('host_id', 'in', `(${quoted})`);
   }
 
-  query = query.in('status', params.status ? [params.status] : ['closed', 'open', 'full']);
-  query = query.gt('starts_at', new Date().toISOString()); 
+  query = query.in('status', params.status ? [params.status] : ['open', 'full']);
 
   const { data: games, error: gamesErr } = await query;
   if (gamesErr) throw new Error(gamesErr.message);
   if (!games || games.length === 0) return [];
 
-  // 4. Attach current_players count
   const gameIds = games.map((g: any) => g.id);
   const { data: participants, error: partErr } = await supabase
     .from('game_participants')

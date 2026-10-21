@@ -28,6 +28,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useUnreadCount } from '../hooks/useUnreadCount';
 import { OnboardingPrompts } from '../components/OnboardingPrompts';
+import { guardGuestAction } from '../lib/guestGuard';
 
 const SPORTS_FILTER = ['ALL', 'VOLLEYBALL', 'BASKETBALL', 'SOCCER', 'TENNIS', 'RUNNING'];
 
@@ -113,7 +114,8 @@ function HomeSkeletonHero() {
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
+  console.log('[HOME] render | isGuest =', isGuest, '| user =', !!user);
   const unreadCount = useUnreadCount();
 
   const [games, setGames] = useState<GameWithHost[]>([]);
@@ -210,6 +212,23 @@ export default function HomeScreen() {
     }, 3000);
   };
 
+  const handleJoinPress = (gameId: string) => {
+    guardGuestAction(isGuest, {
+      action: 'join this game',
+      onAllowed: () => handleJoin(gameId),
+      onSignIn: () =>
+        navigation.navigate('Auth', { screen: 'Login' }),
+    });
+  };
+
+  const handleBellPress = () => {
+    if (isGuest) {
+      navigation.navigate('Auth', { screen: 'Login' });
+      return;
+    }
+    navigation.navigate('Notifications');
+  };
+
   // ---------------------------------------------------------------------------
   // Card render
   // ---------------------------------------------------------------------------
@@ -219,7 +238,7 @@ export default function HomeScreen() {
     const isJoining = joiningId === item.id;
     const feedback = joinFeedback[item.id];
     const isPrivate = item.visibility === 'private';
-    const isMyGame = item.host_id === user?.id;
+    const isMyGame = !isGuest && item.host_id === user?.id;
     const showRedactedLocation = isPrivate && !isMyGame;
 
     let joinLabel = 'JOIN →';
@@ -299,7 +318,7 @@ export default function HomeScreen() {
                   disabled={isFull || isJoining || !!feedback}
                   onPress={(e) => {
                     e.stopPropagation();
-                    handleJoin(item.id);
+                    handleJoinPress(item.id);
                   }}
                   activeOpacity={0.8}
                 >
@@ -374,11 +393,11 @@ export default function HomeScreen() {
           ) : null}
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => navigation.navigate('Notifications')}
+            onPress={handleBellPress}
             accessibilityLabel="Notifications"
           >
             <Ionicons name="notifications-outline" size={24} color={colors.ink} />
-            {unreadCount > 0 ? (
+            {!isGuest && unreadCount > 0 ? (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -388,12 +407,13 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      {/* ↑ This closing </View> was missing in your file */}
 
-      {/* Onboarding prompts — shown until profile is complete */}
-      <View style={styles.promptsContainer}>
-        <OnboardingPrompts show={['sports', 'location']} />
-      </View>
+      {/* Onboarding prompts — only for signed-in users with incomplete profile */}
+      {!isGuest ? (
+        <View style={styles.promptsContainer}>
+          <OnboardingPrompts show={['sports', 'location']} />
+        </View>
+      ) : null}
 
       {loading && !refreshing ? (
         <>

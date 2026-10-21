@@ -14,8 +14,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography, shadows } from '../design';
-import { responsive, isWeb, isDesktop } from '../utils/responsive';
+import { colors, spacing, typography, shadows } from '../design';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -23,11 +22,11 @@ import { useAuth } from '../context/AuthContext';
 
 const { height, width } = Dimensions.get('window');
 
-// Manga-style background (black and white)
 const BACKGROUND_IMAGE = require('../assets/images/background_2.jpg');
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, continueAsGuest, isGuest } = useAuth();
+  console.log('[LOGIN] render | isGuest =', isGuest, '| continueAsGuest type =', typeof continueAsGuest)
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,11 +57,21 @@ export default function LoginScreen() {
       return;
     }
     // No manual navigation — RootNavigator picks up the new session
-    // and routes to Onboarding or Main depending on onboarded_at.
+    // and routes to MainApp.
   };
 
   const handleSignupPress = () => {
     navigation.navigate('Signup' as never);
+  };
+
+  const handleContinueAsGuest = async () => {
+    console.log('[LOGIN] handleContinueAsGuest START');
+    try {
+      await continueAsGuest();
+      console.log('[LOGIN] handleContinueAsGuest END — resolved');
+    } catch (e: any) {
+      console.error('[LOGIN] handleContinueAsGuest THREW:', e);
+    }
   };
 
   useEffect(() => {
@@ -75,7 +84,6 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
-      {/* Manga Background */}
       <ImageBackground
         source={BACKGROUND_IMAGE}
         style={styles.backgroundImage}
@@ -86,9 +94,8 @@ export default function LoginScreen() {
         <View style={styles.inkOverlay} />
       </ImageBackground>
 
-      {/* Content */}
       <View style={styles.contentContainer}>
-        {/* Header - Manga Style */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Text style={styles.logoIcon}>🏐</Text>
@@ -107,7 +114,7 @@ export default function LoginScreen() {
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
-            {/* Main Card - Manga Panel Style */}
+            {/* Main Card */}
             <Card
               variant="light"
               mangaStyle
@@ -118,20 +125,15 @@ export default function LoginScreen() {
                 ...shadows.panel,
               }}
             >
-              {/* Eyebrow - Nike style */}
               <Text style={styles.eyebrow}>WELCOME BACK</Text>
-
-              {/* Title - Haikyuu energy */}
               <Text style={styles.title}>
                 GET IN THE{'\n'}GAME
               </Text>
-
-              {/* Subtitle */}
               <Text style={styles.subtitle}>
                 Sign in to find your next match
               </Text>
 
-              {/* Input Fields */}
+              {/* Inputs */}
               <View style={styles.inputContainer}>
                 <Input
                   label="Email"
@@ -164,7 +166,7 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Sign In Button - Haikyuu Orange */}
+              {/* Sign in */}
               <Button
                 variant="primary"
                 size="large"
@@ -176,14 +178,14 @@ export default function LoginScreen() {
                 SIGN IN
               </Button>
 
-              {/* Divider - Manga style */}
+              {/* Divider */}
               <View style={styles.divider}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>OR</Text>
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Quick Login — disabled until OAuth is implemented */}
+              {/* Disabled social buttons */}
               <View style={styles.quickLoginContainer}>
                 <View style={[styles.quickLoginButton, styles.quickLoginButtonDisabled]}>
                   <Ionicons name="logo-google" size={20} color={colors.textMuted} />
@@ -200,7 +202,7 @@ export default function LoginScreen() {
                 SOCIAL SIGN-IN COMING SOON
               </Text>
 
-              {/* Sign Up Link - Nike style */}
+              {/* Sign up */}
               <View style={styles.footer}>
                 <Text style={styles.footerText}>
                   DON'T HAVE AN ACCOUNT?{' '}
@@ -209,9 +211,34 @@ export default function LoginScreen() {
                   </Text>
                 </Text>
               </View>
+
+              {/* Continue as guest */}
+              <View style={styles.guestBlock}>
+                <View style={styles.guestDivider}>
+                  <View style={styles.guestDividerLine} />
+                  <Text style={styles.guestDividerText}>OR</Text>
+                  <View style={styles.guestDividerLine} />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.guestButton}
+                  onPress={() => {
+                    console.log('[LOGIN] BUTTON pressed');
+                    handleContinueAsGuest();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="eye-outline" size={16} color={colors.ink} />
+                  <Text style={styles.guestButtonText}>CONTINUE AS GUEST</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.guestHint}>
+                  Browse games without signing in
+                </Text>
+              </View>
             </Card>
 
-            {/* Nike Motivational Line */}
+            {/* Motivational line */}
             <View style={styles.motivationalBlock}>
               <View style={styles.motivationalLine} />
               <Text style={styles.motivationalText}>
@@ -233,16 +260,12 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
+    top: 0, left: 0, right: 0, bottom: 0,
+    width: '100%', height: '100%',
   },
   inkOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(247, 245, 240, 0.92)', // Paper white overlay
+    backgroundColor: 'rgba(247, 245, 240, 0.92)',
   },
   contentContainer: {
     flex: 1,
@@ -258,8 +281,8 @@ const styles = StyleSheet.create({
       Platform.OS === 'ios'
         ? 60
         : StatusBar.currentHeight
-        ? StatusBar.currentHeight + 20
-        : 20,
+          ? StatusBar.currentHeight + 20
+          : 20,
     paddingBottom: spacing.md,
   },
   logoContainer: {
@@ -287,13 +310,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
     paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-  },
-  mainCard: {
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-    padding: spacing.xxxl,
-    backgroundColor: colors.paper,
   },
   eyebrow: {
     ...typography.caption,
@@ -336,7 +352,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: spacing.sm,
     marginBottom: spacing.md,
-    borderRadius: 0, // Square - manga style
+    borderRadius: 0,
   },
   divider: {
     flexDirection: 'row',
@@ -366,7 +382,7 @@ const styles = StyleSheet.create({
   quickLoginButton: {
     width: 48,
     height: 48,
-    borderRadius: 0, // Square - manga style
+    borderRadius: 0,
     backgroundColor: colors.inkLight,
     borderWidth: 2,
     borderColor: colors.border,
@@ -401,6 +417,57 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
+
+  // Guest block
+  guestBlock: {
+    marginTop: spacing.lg,
+    width: '100%',
+  },
+  guestDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  guestDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  guestDividerText: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1,
+  },
+  guestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    minHeight: 52,
+    borderWidth: 2,
+    borderColor: colors.ink,
+    backgroundColor: colors.background,
+  },
+  guestButtonText: {
+    ...typography.button,
+    fontSize: 12,
+    color: colors.ink,
+    letterSpacing: 1.5,
+  },
+  guestHint: {
+    ...typography.caption,
+    fontSize: 10,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    letterSpacing: 0.5,
+  },
+
+  // Motivational
   motivationalBlock: {
     flexDirection: 'row',
     alignItems: 'center',
